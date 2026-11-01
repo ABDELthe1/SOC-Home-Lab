@@ -1,0 +1,19 @@
+# secrets
+*.key
+*.pem
+*.pfx
+.env
+*password*
+*secret*
+# VM and capture files
+*.vmdk
+*.vmx
+*.iso
+*.pcap
+*.pcapng
+# raw logs and exports
+*.log
+alerts.json
+# OS
+Thumbs.db
+.DS_Store
