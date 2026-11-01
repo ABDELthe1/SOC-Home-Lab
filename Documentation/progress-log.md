@@ -24,7 +24,7 @@ Real configuration and results only. One entry per working session.
 
 **Open item:** final bridge test with the first VM (SOC Server at 10.10.10.20).
 
-**Screenshots:** P1-01 to P1-08 (see checklist).
+**Screenshots:** `INF-01_architecture-diagram.png` only (see checklist).
 
 **LinkedIn draft (post when Phase 2 is done):**
 Started building a SOC home lab: Wazuh SIEM + Suricata IDS monitoring an Active Directory environment, attacked from a separate Parrot Security workstation. First challenge: only one NIC per machine, so I built a logical lab network with IP aliasing (10.10.10.0/24) and a bridged VMware network. Lesson learned: adding a secondary IP on a DHCP adapter silently disables DHCP on Windows. Next: deploying the VMs and Active Directory. #SOC #BlueTeam #Wazuh #CyberSecurity #HomeLab

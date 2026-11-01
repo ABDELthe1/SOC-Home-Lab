@@ -1,28 +1,36 @@
-# Screenshot Checklist
+# Screenshot Checklist (essentials only)
 
-Naming: `P<phase>-<nn>_<description>.png`
-Save in `Screenshots/` (subfolders from Phase 4: `wazuh-dashboard/`, `security-alerts/`, `attack-evidence/`).
-Before saving: hide passwords, tokens, public IPs, MAC addresses and personal data.
+Naming: `<id>_<description>.png`, saved in `Screenshots/` (subfolders `wazuh-dashboard/`, `security-alerts/`, `attack-evidence/`).
+Before saving: hide passwords, tokens, public IPs and MAC addresses.
+Rule: one screenshot must prove one thing. Skip anything that only shows a step was typed.
 
-Legend: [ ] to take, [x] taken. Mark `[LinkedIn]` items as the best candidates for posts.
+## Infrastructure (4)
 
-## Phase 1 - Network preparation
+- [ ] `INF-01_architecture-diagram.png` - exported Excalidraw diagram [LinkedIn]
+- [ ] `INF-02_vmware-all-vms-running.png` - four VMs running in VMware
+- [ ] `INF-03_wazuh-dashboard-agents-active.png` - three agents Active in the Wazuh dashboard [LinkedIn]
+- [ ] `INF-04_domain-users-and-ous.png` - Active Directory users and OUs (SOC-LAB.LOCAL)
 
-- [ ] `P1-01_pc1-ipconfig-alias.png` - PC1 `ipconfig` showing 192.168.1.8 and 10.10.10.1 on Ethernet
-- [ ] `P1-02_pc1-netipaddress-preferred.png` - `Get-NetIPAddress` output, both addresses Preferred
-- [ ] `P1-03_parrot-ip-alias.png` - Parrot `ip -br a show eno1` showing 192.168.1.12 and 10.10.10.50
-- [ ] `P1-04_ping-parrot-to-pc1.png` - Parrot pinging 10.10.10.1
-- [ ] `P1-05_ping-pc1-to-parrot.png` - PC1 pinging 10.10.10.50
-- [ ] `P1-06_vmware-vmnet0-bridged.png` - Virtual Network Editor with VMnet0 Bridged to the host's physical wired Ethernet adapter
-- [ ] `P1-07_vmware-bridge-protocol.png` - Ethernet properties with VMware Bridge Protocol ticked
-- [ ] `P1-08_architecture-diagram.png` - exported Excalidraw diagram [LinkedIn]
+## Telemetry (3)
 
-## Phase 2 - VM deployment (SOC Server first)
+- [ ] `TEL-01_sysmon-events-in-wazuh.png` - Sysmon events from the Windows client in Wazuh
+- [ ] `TEL-02_windows-4625-events.png` - Event ID 4625 / 4624 in Wazuh
+- [ ] `TEL-03_suricata-alerts-in-wazuh.png` - Suricata events integrated in Wazuh
 
-- [ ] `P2-01_soc-vm-settings.png` - VM hardware summary (4 CPU, 8 GB, 80 GB, network adapters)
-- [ ] `P2-02_soc-ubuntu-network-config.png` - installer static IP screen (10.10.10.20)
-- [ ] `P2-03_soc-ip-and-ping.png` - `ip -br a` plus pings to 10.10.10.1 and 10.10.10.50
-- [ ] `P2-04_ping-from-parrot-to-soc.png` - Parrot pinging 10.10.10.20 (bridge test)
-- [ ] `P2-05_vmware-library-all-vms.png` - all four VMs listed in VMware [LinkedIn]
+## Attacks and detections (2 per scenario)
 
-Next phases are added as we reach them.
+Per scenario: one screenshot of the attack, one of the Wazuh/Suricata alert (with source IP, target, timestamp).
+
+- [ ] `S1-01_hydra-attack.png` / `S1-02_alert-ssh-bruteforce.png`
+- [ ] `S2-01_nmap-scan.png` / `S2-02_alert-suricata-portscan.png`
+- [ ] `S3-01_powershell-command.png` / `S3-02_alert-suspicious-powershell.png`
+- [ ] `S4-01_netexec-impacket-enum.png` / `S4-02_alert-ad-enumeration.png`
+- [ ] `S5-01_sudo-privilege-activity.png` / `S5-02_alert-auditd-sudo.png`
+- [ ] `S6-01_incident-timeline.png` / `S6-02_containment-and-recovery.png`
+
+## Detection engineering (2)
+
+- [ ] `DET-01_custom-rule-fired.png` - custom Wazuh rule triggering an alert [LinkedIn]
+- [ ] `DET-02_dashboard-overview.png` - final dashboard with alerts over time [LinkedIn]
+
+Total: 25. Add more only when something is unusual or worth showing.

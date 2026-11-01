@@ -120,7 +120,7 @@ SOC-Home-Lab/
 
 ## 8. Conventions
 
-- Screenshot names: `P<phase>-<nn>_<description>.png`, for example `P1-03_parrot-ip-alias.png`.
+- Screenshot names: `<id>_<description>.png`, for example `S1-02_alert-ssh-bruteforce.png`. Only essential evidence is kept (see the checklist).
 - Record real configurations and real results only.
 - Never commit passwords, keys, tokens, real logs or personal data. Blur or remove them before uploading.
 - Snapshot every VM before major changes.
