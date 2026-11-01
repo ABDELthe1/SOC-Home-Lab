@@ -2,7 +2,7 @@
 
 Enterprise-inspired Security Operations Center (SOC) built at home: a Wazuh SIEM and Suricata IDS monitor a small Active Directory environment that is attacked in a controlled way from a separate Parrot Security workstation. The full cycle is practiced and documented: attack, collect, detect, alert, investigate, contain, remediate, report.
 
-**Status:** Phase 1 (network preparation) complete - see [Project Status](#project-status).
+**Status:** Phase 1 (network preparation) complete, Phase 2 (VM deployment) in progress - see [Project Status](#6-project-status).
 
 ---
 
@@ -26,7 +26,7 @@ Enterprise-inspired Security Operations Center (SOC) built at home: a Wazuh SIEM
 | PC1 (Windows 11 + VMware Workstation) | Hosts 4 VMs |
 | PC2 (Parrot Security 7.4) | Red Team / attacker workstation (physical machine) |
 | VM1 SOC Server | Wazuh Manager + Indexer + Dashboard, Suricata IDS |
-| VM2 Windows Server 2022 | Domain Controller (AD DS, DNS), Sysmon, Wazuh agent |
+| VM2 Windows Server 2019 | Domain Controller (AD DS, DNS), Sysmon, Wazuh agent |
 | VM3 Windows 10/11 | Domain-joined employee workstation, Sysmon, Wazuh agent |
 | VM4 Ubuntu Server 24.04 | Linux server, SSH, auditd, UFW, Wazuh agent |
 
@@ -45,7 +45,7 @@ Neither PC has a second NIC, so the lab subnet is created by **IP aliasing** on 
 |---|---|---|
 | PC1 host | 192.168.1.8 (static) | 10.10.10.1 (alias) |
 | PC2 Parrot | 192.168.1.12 (DHCP) | 10.10.10.50 (alias) |
-| Windows Server 2022 (DC) | - | 10.10.10.10 |
+| Windows Server 2019 (DC) | - | 10.10.10.10 |
 | SOC Server | - | 10.10.10.20 |
 | Windows Client | - | 10.10.10.30 |
 | Ubuntu Server | - | 10.10.10.40 |
@@ -64,12 +64,16 @@ Suricata runs on a second vNIC of the SOC Server (promiscuous mode, no IP) attac
 
 | VM | OS | vCPU | RAM | Disk | Lab IP |
 |---|---|---|---|---|---|
-| SOC-Server | Ubuntu Server 24.04 LTS | 4 | 8 GB | 80 GB | 10.10.10.20 |
-| DC01 | Windows Server 2022 | 2 | 5 GB | 60 GB | 10.10.10.10 |
+| SOC-Server | Ubuntu Server 24.04.3 LTS | 4 | 8 GB | 80 GB (root LV 78 GB) | 10.10.10.20 |
+| DC01 | Windows Server 2019 Standard Evaluation (Desktop Experience) | 2 | 5 GB | 60 GB | 10.10.10.10 |
 | WIN-CLIENT | Windows 10/11 | 2 | 5 GB | 60 GB | 10.10.10.30 |
 | UBUNTU-SRV | Ubuntu Server 24.04 LTS | 2 | 2 GB | 30 GB | 10.10.10.40 |
 
 Domain: `SOC-LAB.LOCAL`
+
+Each VM has a lab adapter on VMnet0 (static lab IP, no gateway) and a temporary NAT adapter (VMnet8) for updates only.
+
+Architecture change: the Domain Controller uses Windows Server 2019 instead of 2022, because the 2019 ISO was available, it is lighter, and it is widely used in AD attack and detection labs.
 
 ## 5. Attack scenarios (all inside the authorized lab)
 
@@ -88,9 +92,9 @@ A detection counts as successful only when the event is generated, collected, an
 
 | Phase | Description | Status |
 |---|---|---|
-| 1 | Infrastructure and network preparation | Done (VM bridge test pending first VM) |
-| 2 | VM deployment | Next |
-| 3 | Active Directory | Pending |
+| 1 | Infrastructure and network preparation | Done |
+| 2 | VM deployment | In progress (SOC-Server done, DC01 created and network verified, Windows Client and Ubuntu Server pending) |
+| 3 | Active Directory | Next |
 | 4 | Wazuh SIEM and agents | Pending |
 | 5 | Endpoint monitoring (Sysmon, auditd, FIM) | Pending |
 | 6 | Suricata IDS | Pending |
