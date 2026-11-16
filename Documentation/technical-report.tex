@@ -10,6 +10,8 @@
 \usepackage{listings}
 \usepackage[hidelinks]{hyperref}
 
+\setlength{\emergencystretch}{2em}
+
 \lstset{
   basicstyle=\ttfamily\small,
   breaklines=true,
@@ -33,7 +35,8 @@ SIEM and Suricata IDS monitor a small Active Directory environment that is
 attacked in a controlled way from a separate Parrot Security workstation. The
 full cycle is practiced and documented: attack, collect, detect, alert,
 investigate, contain, remediate, report. This report covers Phase~1 (network
-preparation) and the current state of Phase~2 (VM deployment).
+preparation), Phase~2 (VM deployment) and Phase~3 (Active Directory), which
+are complete. Phase~4 (Wazuh SIEM and agents) is next.
 \end{abstract}
 
 \tableofcontents
@@ -64,7 +67,7 @@ PC1 (Windows 11 + VMware Workstation) & Hosts 4 VMs \\
 PC2 (Parrot Security 7.4) & Red Team / attacker workstation (physical machine) \\
 VM1 SOC Server & Wazuh Manager + Indexer + Dashboard, Suricata IDS \\
 VM2 Windows Server 2019 & Domain Controller (AD DS, DNS), Sysmon, Wazuh agent \\
-VM3 Windows 10/11 & Domain-joined employee workstation, Sysmon, Wazuh agent \\
+VM3 Windows 10 Pro & Domain-joined employee workstation, Sysmon, Wazuh agent \\
 VM4 Ubuntu Server 24.04 & Linux server, SSH, auditd, UFW, Wazuh agent \\
 \bottomrule
 \end{tabularx}
@@ -143,15 +146,20 @@ VM & OS & vCPU & RAM & Disk & Lab IP \\
 \midrule
 SOC-Server & Ubuntu Server 24.04.3 LTS & 4 & 8 GB & 80 GB (root LV 78 GB) & 10.10.10.20 \\
 DC01 & Windows Server 2019 Standard Evaluation (Desktop Experience) & 2 & 5 GB & 60 GB & 10.10.10.10 \\
-WIN-CLIENT & Windows 10/11 & 2 & 5 GB & 60 GB & 10.10.10.30 \\
-UBUNTU-SRV & Ubuntu Server 24.04 LTS & 2 & 2 GB & 30 GB & 10.10.10.40 \\
+WIN-CLIENT & Windows 10 Pro & 2 & 5 GB & 60 GB & 10.10.10.30 \\
+UBUNTU-SRV & Ubuntu Server 24.04.3 LTS & 2 & 2 GB & 30 GB (root LV 28 GB) & 10.10.10.40 \\
 \bottomrule
 \end{tabularx}
 \caption{Virtual machines (domain: \texttt{SOC-LAB.LOCAL})}
 \end{table}
 
+Domain \texttt{SOC-LAB.LOCAL}: AD DS and DNS on DC01, DNS forwarder 8.8.8.8.
+WIN-CLIENT is joined to the domain. The Domain Controller (DC01) runs Windows
+Server 2019.
+
 Each VM has a lab adapter on VMnet0 (static lab IP, no gateway) and a
-temporary NAT adapter (VMnet8) for updates only.
+temporary NAT adapter (VMnet8) for updates only. All four VMs reach each other
+on 10.10.10.0/24.
 
 %--------------------------------------------------------------------
 \section{Phase 1: Network preparation}
@@ -184,7 +192,7 @@ temporary NAT adapter (VMnet8) for updates only.
 \end{enumerate}
 
 %--------------------------------------------------------------------
-\section{Phase 2: VM deployment (in progress)}
+\section{Phase 2: VM deployment}
 
 \subsection{SOC-Server}
 \begin{itemize}
@@ -204,8 +212,31 @@ temporary NAT adapter (VMnet8) for updates only.
   \item LAB adapter (VMnet0) static 10.10.10.10/24, no gateway; NAT adapter
         for updates.
   \item Pings to 10.10.10.1, 10.10.10.20 and 10.10.10.50 succeed.
-  \item Active Directory not installed yet. Snapshot not taken yet.
+  \item Promoted to Domain Controller in Phase~3.
 \end{itemize}
+
+\subsection{WIN-CLIENT}
+\begin{itemize}
+  \item Windows 10 Pro, 2 vCPU, 5 GB RAM, 60 GB disk.
+  \item LAB adapter (VMnet0) static 10.10.10.30/24, no gateway, DNS
+        10.10.10.10; second adapter on NAT, not registered in DNS.
+  \item Joined to \texttt{SOC-LAB.LOCAL}; computer object in
+        \texttt{OU=Computers,\allowbreak OU=SOC-LAB,\allowbreak DC=SOC-LAB,\allowbreak DC=LOCAL}.
+  \item Login as \texttt{SOC-LAB\textbackslash IT\_User} verified
+        (\texttt{whoami} and domain name checked).
+\end{itemize}
+
+\subsection{UBUNTU-SRV}
+\begin{itemize}
+  \item Ubuntu Server 24.04.3 LTS, 2 vCPU, 2 GB RAM, 30 GB disk; root LV
+        extended to 28 GB.
+  \item \texttt{ens33} = VMnet0, static 10.10.10.40/24 (no gateway);
+        \texttt{ens34} = NAT (DHCP).
+  \item OpenSSH installed; SSH works from Parrot.
+  \item Ping verified to 10.10.10.10, 10.10.10.20 and 10.10.10.50.
+\end{itemize}
+
+All four VMs are created and reach each other on 10.10.10.0/24.
 
 \subsection{Problems and lessons learned}
 \begin{enumerate}
@@ -232,14 +263,60 @@ sudo lvextend -r -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
   \item \textbf{One-off TTL 128.} TTL 128 appeared once on a ping from DC01
         to the SOC-Server. Later checks showed ttl=64, a correct ARP table and
         forwarding disabled, so it was treated as a one-off.
+  \item \textbf{Missing lab adapter.} WIN-CLIENT was installed with only a
+        NAT adapter. The lab adapter on VMnet0 was hot-added afterwards in VM
+        Settings.
+  \item \textbf{Installer SSH host key.} SSH to 10.10.10.40 during the Ubuntu
+        install reached the installer's temporary SSH server (different host
+        key and password), causing ``Permission denied'' and a changed host key
+        warning after the reboot. Fix: \texttt{ssh-keygen -R} for the old
+        entry. Lesson: do not SSH into a VM until the install is finished and
+        rebooted.
+  \item \textbf{Keyboard layout.} On Linux, a password typed during the
+        install used the US keyboard layout. If SSH rejects it, reset it from
+        the VM console with \texttt{sudo passwd}.
 \end{enumerate}
 
-\subsection{Open items}
+%--------------------------------------------------------------------
+\section{Phase 3: Active Directory}
+
+\subsection{Done}
 \begin{itemize}
-  \item DC01 snapshot.
-  \item AD DS installation on DC01.
-  \item Remaining VMs: Windows Client (10.10.10.30) and Ubuntu Server
-        (10.10.10.40).
+  \item DC01 (Windows Server 2019 Standard Evaluation, Desktop Experience)
+        runs AD DS and DNS for the domain \texttt{SOC-LAB.LOCAL}, with DNS
+        forwarder 8.8.8.8.
+  \item OU structure: \texttt{SOC-LAB} containing Users, Administrators,
+        IT Department, HR Department, Finance Department, Computers, Servers.
+  \item Users created and enabled: \texttt{IT\_User} (IT Department),
+        \texttt{HR\_User} (HR Department), \texttt{Finance\_User} (Finance
+        Department), \texttt{Standard\_User} (Users). Built-in Administrator
+        exists.
+\end{itemize}
+
+\subsection{Problems and lessons learned}
+\begin{enumerate}
+  \item \textbf{NAT adapter registered in DNS.} DC01 registered its NAT
+        adapter address in DNS, so \texttt{soc-lab.local} resolved to two IPs.
+        Fix:
+\begin{lstlisting}
+Set-DnsClient -InterfaceAlias NAT -RegisterThisConnectionsAddress $false
+dnscmd /ResetListenAddresses 10.10.10.10
+\end{lstlisting}
+        then delete the stale A records in \texttt{SOC-LAB.LOCAL} and
+        \texttt{\_msdcs.SOC-LAB.LOCAL}, restart DNS and Netlogon, and run
+        \texttt{nltest /dsregdns}. The same setting was applied on WIN-CLIENT
+        before the domain join. Lesson: multi-homed lab machines must not
+        register the temporary NAT adapter in AD DNS.
+\end{enumerate}
+
+%--------------------------------------------------------------------
+\section{Open items (Phase 4 and later)}
+
+Wazuh, Suricata, Sysmon and the Wazuh agents are not installed yet.
+\begin{itemize}
+  \item Wazuh and Suricata on the SOC-Server.
+  \item Sysmon and Wazuh agent on WIN-CLIENT.
+  \item auditd, UFW and Wazuh agent on UBUNTU-SRV.
 \end{itemize}
 
 %--------------------------------------------------------------------
@@ -279,10 +356,9 @@ analyzed and verified.
 Phase & Description & Status \\
 \midrule
 1 & Infrastructure and network preparation & Done \\
-2 & VM deployment & In progress (SOC-Server done, DC01 created and network
-    verified, Windows Client and Ubuntu Server pending) \\
-3 & Active Directory & Next \\
-4 & Wazuh SIEM and agents & Pending \\
+2 & VM deployment & Done \\
+3 & Active Directory & Done \\
+4 & Wazuh SIEM and agents & Next \\
 5 & Endpoint monitoring (Sysmon, auditd, FIM) & Pending \\
 6 & Suricata IDS & Pending \\
 7 & Attack simulations & Pending \\
