@@ -59,3 +59,41 @@ Started building a SOC home lab: Wazuh SIEM + Suricata IDS monitoring an Active 
 - Wazuh and Suricata are not installed on the SOC-Server yet.
 
 ---
+## 2026-11-13 - Phase 3: Active Directory
+
+**Goal:** promote DC01 to a Domain Controller and build the domain structure.
+
+**Done:**
+- DC01 (Windows Server 2019 Standard Evaluation, Desktop Experience) runs AD DS and DNS for the domain `SOC-LAB.LOCAL`, with DNS forwarder 8.8.8.8.
+- OU structure: `SOC-LAB` containing Users, Administrators, IT Department, HR Department, Finance Department, Computers, Servers.
+- Users created and enabled: `IT_User` (IT Department), `HR_User` (HR Department), `Finance_User` (Finance Department), `Standard_User` (Users). Built-in Administrator exists.
+
+**Problems and fixes (lessons learned):**
+1. DC01 registered its NAT adapter address in DNS, so `soc-lab.local` resolved to two IPs. Fix: `Set-DnsClient -InterfaceAlias NAT -RegisterThisConnectionsAddress $false`, `dnscmd /ResetListenAddresses 10.10.10.10`, delete the stale A records in `SOC-LAB.LOCAL` and `_msdcs.SOC-LAB.LOCAL`, restart DNS and Netlogon, then `nltest /dsregdns`. The same setting was applied on WIN-CLIENT before the domain join. Lesson: multi-homed lab machines must not register the temporary NAT adapter in AD DNS.
+
+**Screenshots:** `INF-04_domain-users-and-ous.png`.
+
+---
+
+## 2026-11-16 - Phase 2 complete: WIN-CLIENT and UBUNTU-SRV
+
+**Goal:** deploy the remaining two VMs, join the client to the domain and verify lab connectivity.
+
+**Done:**
+- WIN-CLIENT: Windows 10 Pro, 2 vCPU, 5 GB RAM, 60 GB disk. LAB adapter (VMnet0) static 10.10.10.30/24, no gateway, DNS 10.10.10.10; second adapter on NAT, not registered in DNS.
+- WIN-CLIENT: joined to `SOC-LAB.LOCAL`; computer object in `OU=Computers,OU=SOC-LAB,DC=SOC-LAB,DC=LOCAL`. Login as `SOC-LAB\IT_User` verified (`whoami` and domain name checked).
+- UBUNTU-SRV: Ubuntu Server 24.04.3 LTS, 2 vCPU, 2 GB RAM, 30 GB disk; root LV extended to 28 GB. `ens33` = VMnet0, static 10.10.10.40/24 (no gateway); `ens34` = NAT (DHCP).
+- UBUNTU-SRV: OpenSSH installed; SSH works from Parrot. Ping verified to 10.10.10.10, 10.10.10.20 and 10.10.10.50.
+- All four VMs are created and reach each other on 10.10.10.0/24. Phase 2 is done.
+
+**Problems and fixes (lessons learned):**
+1. WIN-CLIENT was installed with only a NAT adapter. Fix: the lab adapter on VMnet0 was hot-added afterwards in VM Settings.
+2. SSH to 10.10.10.40 during the Ubuntu install reached the installer's temporary SSH server (different host key and password), causing "Permission denied" and a changed host key warning after the reboot. Fix: `ssh-keygen -R` for the old entry. Lesson: do not SSH into a VM until the install is finished and rebooted.
+3. On Linux, a password typed during the install used the US keyboard layout. Fix: if SSH rejects it, reset it from the VM console with `sudo passwd`.
+
+**Open items (Phase 4 and later):**
+- Wazuh and Suricata on the SOC-Server.
+- Sysmon and Wazuh agent on WIN-CLIENT.
+- auditd, UFW and Wazuh agent on UBUNTU-SRV.
+
+---
