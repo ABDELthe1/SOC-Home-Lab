@@ -97,3 +97,39 @@ Started building a SOC home lab: Wazuh SIEM + Suricata IDS monitoring an Active 
 - auditd, UFW and Wazuh agent on UBUNTU-SRV.
 
 ---
+
+## 2026-11-20 - Phase 4: Wazuh SIEM and agents
+
+**Goal:** deploy the Wazuh SIEM and register agents on the lab endpoints.
+
+**Done:**
+- Wazuh 4.14.10 all-in-one installed on SOC-Server (10.10.10.20).
+- Agents registered on DC01, WIN-CLIENT and UBUNTU-SRV.
+- VMs moved from the USB disk to NVMe (`C:\VMs\project`) to fix 100% disk activity and slowness.
+
+**Problems and fixes (lessons learned):**
+1. The dashboard showed "No API available" / HTTP 429. Cause: retries during start-up. Fix: wait until the services are fully up and use one browser tab.
+
+---
+
+## 2026-11-20 - Phase 5: Endpoint monitoring (Sysmon, auditd, FIM)
+
+**Goal:** collect endpoint telemetry from Windows and Linux and validate that Wazuh raises alerts.
+
+**Done:**
+- WIN-CLIENT and DC01: Sysmon (SwiftOnSecurity config), collected by the Wazuh agent via an `eventchannel` localfile.
+- WIN-CLIENT and DC01: Windows audit policies set with `auditpol` (Logon, Account Lockout, Credential Validation, User/Group Management, Process Creation; Kerberos on DC01).
+- Validated: a failed logon to DC01 from WIN-CLIENT produced Event 4625 and the rule "Logon Failure - Unknown user or bad password" (level 5).
+- UBUNTU-SRV: auditd rules ([Configuration/auditd/soc.rules](../Configuration/auditd/soc.rules)) and FIM in realtime on `/home/socadmin/fim-test`.
+- Validated: a file added in the FIM folder raised rule 554; `useradd` / `userdel` produced rules 80781, 80791 and 80792.
+- Agent configuration snippets: [Configuration/wazuh/agent-localfile-snippets.md](../Configuration/wazuh/agent-localfile-snippets.md).
+
+**Problems and fixes (lessons learned):**
+1. The initial auditd rule logging every root `execve` produced about 1,600 events in 15 minutes. Fix: restricted to `auid>=1000` and switched the watch keys to `audit-wazuh-w` so the Wazuh built-in rules fire.
+2. VM time zones differ (DC01 is on Pacific time). UTC timestamps were verified correct.
+
+**Screenshots:** `TEL-01_sysmon-events-in-wazuh.png`.
+
+**Open items:** Phase 6 (Suricata IDS) next.
+
+---

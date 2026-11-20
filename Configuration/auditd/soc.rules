@@ -1,0 +1,5 @@
+-w /etc/passwd -p wa -k audit-wazuh-w
+-w /etc/shadow -p wa -k audit-wazuh-w
+-w /etc/sudoers -p wa -k audit-wazuh-w
+-w /etc/sudoers.d/ -p wa -k audit-wazuh-w
+-a always,exit -F arch=b64 -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k audit-wazuh-c

@@ -13,7 +13,7 @@ Rule: one screenshot must prove one thing. Skip anything that only shows a step 
 
 ## Telemetry (3)
 
-- [ ] `TEL-01_sysmon-events-in-wazuh.png` - Sysmon events from the Windows client in Wazuh
+- [x] `TEL-01_sysmon-events-in-wazuh.png` - Sysmon events from the Windows client in Wazuh
 - [ ] `TEL-02_windows-4625-events.png` - Event ID 4625 / 4624 in Wazuh
 - [ ] `TEL-03_suricata-alerts-in-wazuh.png` - Suricata events integrated in Wazuh
 

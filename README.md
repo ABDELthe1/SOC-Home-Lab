@@ -97,9 +97,9 @@ A detection counts as successful only when the event is generated, collected, an
 | 1 | Infrastructure and network preparation | Done |
 | 2 | VM deployment | Done |
 | 3 | Active Directory | Done |
-| 4 | Wazuh SIEM and agents | Next |
-| 5 | Endpoint monitoring (Sysmon, auditd, FIM) | Pending |
-| 6 | Suricata IDS | Pending |
+| 4 | Wazuh SIEM and agents | Done |
+| 5 | Endpoint monitoring (Sysmon, auditd, FIM) | Done |
+| 6 | Suricata IDS | Next |
 | 7 | Attack simulations | Pending |
 | 8 | Detection engineering | Pending |
 | 9 | Incident response | Pending |
