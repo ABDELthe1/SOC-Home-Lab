@@ -8,13 +8,13 @@ Rule: one screenshot must prove one thing. Skip anything that only shows a step 
 
 - [ ] `INF-01_architecture-diagram.png` - exported Excalidraw diagram [LinkedIn]
 - [x] `INF-02_vmware-all-vms-running.png` - four VMs running in VMware
-- [ ] `INF-03_wazuh-dashboard-agents-active.png` - three agents Active in the Wazuh dashboard [LinkedIn]
+- [x] `INF-03_wazuh-dashboard-agents-active.png` - three agents Active in the Wazuh dashboard [LinkedIn]
 - [x] `INF-04_domain-users-and-ous.png` - Active Directory users and OUs (SOC-LAB.LOCAL)
 
 ## Telemetry (3)
 
 - [x] `TEL-01_sysmon-events-in-wazuh.png` - Sysmon events from the Windows client in Wazuh
-- [ ] `TEL-02_windows-4625-events.png` - Event ID 4625 / 4624 in Wazuh
+- [x] `TEL-02_windows-4625-events.png` - Event ID 4625 / 4624 in Wazuh
 - [ ] `TEL-03_suricata-alerts-in-wazuh.png` - Suricata events integrated in Wazuh
 
 ## Attacks and detections (2 per scenario)
