@@ -36,8 +36,8 @@ attacked in a controlled way from a separate Parrot Security workstation. The
 full cycle is practiced and documented: attack, collect, detect, alert,
 investigate, contain, remediate, report. This report covers Phase~1 (network
 preparation), Phase~2 (VM deployment), Phase~3 (Active Directory), Phase~4
-(Wazuh SIEM and agents) and Phase~5 (endpoint monitoring), which are complete.
-Phase~6 (Suricata IDS) is next.
+(Wazuh SIEM and agents), Phase~5 (endpoint monitoring) and Phase~6 (Suricata
+IDS), which are complete. Phase~7 (attack simulations) is next.
 \end{abstract}
 
 \tableofcontents
@@ -130,8 +130,8 @@ Ubuntu Server & -- & 10.10.10.40 \\
 devices. A direct cable between the PCs or a dedicated switch is a future
 improvement.
 
-\paragraph{IDS visibility.} Suricata runs on a second vNIC of the SOC Server
-(promiscuous mode, no IP) attached to VMnet0, so it sees traffic that reaches
+\paragraph{IDS visibility.} Suricata runs on a dedicated capture vNIC of the SOC Server
+(\texttt{ens38}, promiscuous mode, no IP) attached to VMnet0, so it sees traffic that reaches
 PC1's NIC and traffic on the virtual switch. Visibility is validated before any
 detection is trusted.
 
@@ -203,7 +203,7 @@ on 10.10.10.0/24.
   \item Root LV extended from 39 GB to 78 GB.
   \item SSH works from Parrot and PC1. Fully updated.
   \item Snapshot \texttt{01-clean-install-network-ok} taken.
-  \item Wazuh installed in Phase~4; Suricata not installed yet.
+  \item Wazuh installed in Phase~4; Suricata installed in Phase~6.
 \end{itemize}
 
 \subsection{DC01}
@@ -375,10 +375,76 @@ Final auditd rules:
 \end{enumerate}
 
 %--------------------------------------------------------------------
-\section{Open items (Phase 6 and later)}
+\section{Phase 6: Suricata IDS}
+
+\subsection{Done}
+\begin{itemize}
+  \item Suricata 8.0.8 (OISF PPA) installed on SOC-Server.
+  \item Third vNIC \texttt{ens38} on VMnet0 for capture: no IP, promiscuous,
+        GRO/LRO/TSO/GSO off, made persistent with the systemd unit
+        \texttt{capture-nic.service}.
+  \item \texttt{HOME\_NET} set to the four victim hosts only (10.10.10.10,
+        .20, .30, .40), so the Parrot attacker 10.10.10.50 counts as
+        \texttt{EXTERNAL\_NET}.
+  \item BPF filter \texttt{net 10.10.10.0/24} on the capture interface.
+  \item \texttt{eve.json} forwarded to Wazuh via a manager localfile
+        (\texttt{log\_format json}). Wazuh matches all Suricata events with
+        built-in rule 86601.
+\end{itemize}
+
+\subsection{Rule sources}
+\begin{itemize}
+  \item Emerging Threats Open via \texttt{suricata-update}: 69,559 rules
+        loaded, 53,582 enabled, merged into
+        \texttt{/var/lib/\allowbreak suricata/\allowbreak rules/\allowbreak suricata.rules}.
+  \item Suricata built-in rules from
+        \texttt{/usr/share/\allowbreak suricata/\allowbreak rules} (decoder,
+        app-layer and stream events).
+  \item No custom rules yet (Phase~8).
+\end{itemize}
+
+\subsection{Validation}
+\texttt{nmap -sS -sV -O} from Parrot to UBUNTU-SRV produced the following
+alerts, visible in Suricata (\texttt{fast.log} / \texttt{eve.json}) and in
+Wazuh (rule 86601, groups \texttt{ids}/\texttt{suricata},
+\texttt{in\_iface} \texttt{ens38}):
+
+\begin{table}[h]
+\centering
+\begin{tabular}{rl}
+\toprule
+SID & Signature \\
+\midrule
+2001219 & ET SCAN Potential SSH Scan \\
+2018489 & ET SCAN NMAP OS Detection Probe \\
+2200025 & SURICATA ICMPv4 unknown code \\
+2200130 & SURICATA TCP wscale over maximum \\
+\bottomrule
+\end{tabular}
+\caption{Suricata alerts from the Nmap scan}
+\end{table}
+
+\subsection{Problems and lessons learned}
+\begin{enumerate}
+  \item \textbf{Host internet traffic captured.} Suricata also captured the
+        host's internet traffic through the bridged segment (privacy and
+        noise). Fix: BPF filter \texttt{net 10.10.10.0/24}.
+  \item \textbf{Manager restart load.} A Wazuh manager restart caused a load
+        spike (load average $\sim$27 on 4 vCPUs) and a dashboard API timeout
+        for a few minutes.
+  \item \textbf{Manager events.} Manager events (agent 000) are only visible
+        in the global Threat Hunting view.
+  \item \textbf{Noisy stream alerts.} Generic SURICATA STREAM alerts are
+        noisy; they will be tuned in Phase~8.
+\end{enumerate}
+
+%--------------------------------------------------------------------
+\section{Open items (Phase 7 and later)}
 
 \begin{itemize}
-  \item Phase~6: Suricata IDS on the SOC-Server (next).
+  \item Phase~7: attack simulations (next).
+  \item Phase~8: custom detection rules and tuning of the SURICATA STREAM
+        alerts.
 \end{itemize}
 
 %--------------------------------------------------------------------
@@ -422,8 +488,8 @@ Phase & Description & Status \\
 3 & Active Directory & Done \\
 4 & Wazuh SIEM and agents & Done \\
 5 & Endpoint monitoring (Sysmon, auditd, FIM) & Done \\
-6 & Suricata IDS & Next \\
-7 & Attack simulations & Pending \\
+6 & Suricata IDS & Done \\
+7 & Attack simulations & Next \\
 8 & Detection engineering & Pending \\
 9 & Incident response & Pending \\
 10 & Final documentation & Pending \\

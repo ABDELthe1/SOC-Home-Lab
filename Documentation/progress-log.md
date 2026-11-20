@@ -133,3 +133,29 @@ Started building a SOC home lab: Wazuh SIEM + Suricata IDS monitoring an Active 
 **Open items:** Phase 6 (Suricata IDS) next.
 
 ---
+
+## 2026-11-20 - Phase 6: Suricata IDS
+
+**Goal:** add network detection with Suricata on the SOC-Server and forward its alerts to Wazuh.
+
+**Done:**
+- Suricata 8.0.8 (OISF PPA) installed on SOC-Server.
+- Third vNIC `ens38` on VMnet0 for capture: no IP, promiscuous, GRO/LRO/TSO/GSO off, made persistent with the systemd unit `capture-nic.service` ([Configuration/suricata/capture-nic.service](../Configuration/suricata/capture-nic.service)).
+- Rules: Emerging Threats Open via `suricata-update` (69,559 loaded, 53,582 enabled, merged into `/var/lib/suricata/rules/suricata.rules`) plus the Suricata built-in rules from `/usr/share/suricata/rules` (decoder, app-layer and stream events). No custom rules yet (Phase 8).
+- `HOME_NET` set to the four victim hosts only (10.10.10.10, .20, .30, .40), so the Parrot attacker 10.10.10.50 counts as `EXTERNAL_NET`.
+- BPF filter `net 10.10.10.0/24` on the capture interface.
+- `eve.json` forwarded to Wazuh via a manager localfile (`log_format json`). Wazuh matches all Suricata events with built-in rule 86601.
+- Configuration changes: [Configuration/suricata/suricata-changes.md](../Configuration/suricata/suricata-changes.md).
+- Validated: `nmap -sS -sV -O` from Parrot to UBUNTU-SRV produced ET SCAN Potential SSH Scan (SID 2001219) and ET SCAN NMAP OS Detection Probe (SID 2018489), plus SURICATA ICMPv4 unknown code (2200025) and TCP wscale over maximum (2200130). The alerts are visible in Suricata (`fast.log` / `eve.json`) and in Wazuh (rule 86601, groups `ids`/`suricata`, `in_iface` `ens38`).
+
+**Problems and fixes (lessons learned):**
+1. Suricata also captured the host's internet traffic through the bridged segment (privacy and noise). Fix: BPF filter `net 10.10.10.0/24`.
+2. A Wazuh manager restart caused a load spike (load average ~27 on 4 vCPUs) and a dashboard API timeout for a few minutes.
+3. Manager events (agent 000) are only visible in the global Threat Hunting view.
+4. Generic SURICATA STREAM alerts are noisy; they will be tuned in Phase 8.
+
+**Screenshots:** `TEL-03_suricata-alerts-in-wazuh.png`.
+
+**Open items:** Phase 7 (attack simulations) next.
+
+---

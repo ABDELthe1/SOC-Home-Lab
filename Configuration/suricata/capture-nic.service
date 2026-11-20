@@ -1,0 +1,13 @@
+[Unit]
+Description=Suricata capture NIC ens38 (up, promiscuous, offloads off)
+After=network.target
+Before=suricata.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/ip link set ens38 up promisc on
+ExecStart=/usr/sbin/ethtool -K ens38 gro off lro off tso off gso off
+
+[Install]
+WantedBy=multi-user.target

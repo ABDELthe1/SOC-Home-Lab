@@ -2,7 +2,7 @@
 
 Enterprise-inspired Security Operations Center (SOC) built at home: a Wazuh SIEM and Suricata IDS monitor a small Active Directory environment that is attacked in a controlled way from a separate Parrot Security workstation. The full cycle is practiced and documented: attack, collect, detect, alert, investigate, contain, remediate, report.
 
-**Status:** Phases 1-5 (network, VM deployment, Active Directory, Wazuh, endpoint monitoring) complete, Phase 6 next (Suricata) - see [Project Status](#6-project-status).
+**Status:** Phases 1-6 (network, VM deployment, Active Directory, Wazuh, endpoint monitoring, Suricata) complete, Phase 7 next (attack simulations) - see [Project Status](#6-project-status).
 
 ---
 
@@ -99,8 +99,8 @@ A detection counts as successful only when the event is generated, collected, an
 | 3 | Active Directory | Done |
 | 4 | Wazuh SIEM and agents | Done |
 | 5 | Endpoint monitoring (Sysmon, auditd, FIM) | Done |
-| 6 | Suricata IDS | Next |
-| 7 | Attack simulations | Pending |
+| 6 | Suricata IDS | Done |
+| 7 | Attack simulations | Next |
 | 8 | Detection engineering | Pending |
 | 9 | Incident response | Pending |
 | 10 | Final documentation | Pending |

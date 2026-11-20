@@ -15,7 +15,7 @@ Rule: one screenshot must prove one thing. Skip anything that only shows a step 
 
 - [x] `TEL-01_sysmon-events-in-wazuh.png` - Sysmon events from the Windows client in Wazuh
 - [x] `TEL-02_windows-4625-events.png` - Event ID 4625 / 4624 in Wazuh
-- [ ] `TEL-03_suricata-alerts-in-wazuh.png` - Suricata events integrated in Wazuh
+- [x] `TEL-03_suricata-alerts-in-wazuh.png` - Suricata events integrated in Wazuh
 - [x] `TEL-04_ubuntu-fim-file-added.png` - Linux FIM and auditd alerts in Wazuh (UBUNTU-SRV)
 
 ## Attacks and detections (2 per scenario)

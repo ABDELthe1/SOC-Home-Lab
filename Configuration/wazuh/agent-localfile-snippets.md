@@ -29,3 +29,14 @@ Inside the `<syscheck>` section:
 ```xml
 <directories realtime="yes">/home/socadmin/fim-test</directories>
 ```
+
+## Suricata eve.json (Wazuh manager on SOC-Server)
+
+In the manager's `ossec.conf`, not an agent. Events appear as agent 000 and match built-in rule 86601.
+
+```xml
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/log/suricata/eve.json</location>
+</localfile>
+```
