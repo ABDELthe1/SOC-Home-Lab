@@ -58,7 +58,7 @@ Isolation rules:
 
 Known limitation: the lab shares the physical wire with home devices. A direct cable between the PCs or a dedicated switch is a future improvement.
 
-Suricata runs on a second vNIC of the SOC Server (promiscuous mode, no IP) attached to VMnet0, so it sees traffic that reaches PC1's NIC and traffic on the virtual switch. Visibility is validated before any detection is trusted.
+Suricata runs on a dedicated capture vNIC (ens38) of the SOC Server (promiscuous mode, no IP) attached to VMnet0, so it sees traffic that reaches PC1's NIC and traffic on the virtual switch. Visibility is validated before any detection is trusted.
 
 ## 4. VM inventory
 
