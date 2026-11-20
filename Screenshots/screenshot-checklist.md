@@ -11,11 +11,12 @@ Rule: one screenshot must prove one thing. Skip anything that only shows a step 
 - [x] `INF-03_wazuh-dashboard-agents-active.png` - three agents Active in the Wazuh dashboard [LinkedIn]
 - [x] `INF-04_domain-users-and-ous.png` - Active Directory users and OUs (SOC-LAB.LOCAL)
 
-## Telemetry (3)
+## Telemetry (4)
 
 - [x] `TEL-01_sysmon-events-in-wazuh.png` - Sysmon events from the Windows client in Wazuh
 - [x] `TEL-02_windows-4625-events.png` - Event ID 4625 / 4624 in Wazuh
 - [ ] `TEL-03_suricata-alerts-in-wazuh.png` - Suricata events integrated in Wazuh
+- [x] `TEL-04_ubuntu-fim-file-added.png` - Linux FIM and auditd alerts in Wazuh (UBUNTU-SRV)
 
 ## Attacks and detections (2 per scenario)
 
@@ -33,4 +34,4 @@ Per scenario: one screenshot of the attack, one of the Wazuh/Suricata alert (wit
 - [ ] `DET-01_custom-rule-fired.png` - custom Wazuh rule triggering an alert [LinkedIn]
 - [ ] `DET-02_dashboard-overview.png` - final dashboard with alerts over time [LinkedIn]
 
-Total: 25. Add more only when something is unusual or worth showing.
+Total: 26. Add more only when something is unusual or worth showing.
