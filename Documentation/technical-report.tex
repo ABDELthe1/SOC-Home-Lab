@@ -35,8 +35,9 @@ SIEM and Suricata IDS monitor a small Active Directory environment that is
 attacked in a controlled way from a separate Parrot Security workstation. The
 full cycle is practiced and documented: attack, collect, detect, alert,
 investigate, contain, remediate, report. This report covers Phase~1 (network
-preparation), Phase~2 (VM deployment) and Phase~3 (Active Directory), which
-are complete. Phase~4 (Wazuh SIEM and agents) is next.
+preparation), Phase~2 (VM deployment), Phase~3 (Active Directory), Phase~4
+(Wazuh SIEM and agents) and Phase~5 (endpoint monitoring), which are complete.
+Phase~6 (Suricata IDS) is next.
 \end{abstract}
 
 \tableofcontents
@@ -202,7 +203,7 @@ on 10.10.10.0/24.
   \item Root LV extended from 39 GB to 78 GB.
   \item SSH works from Parrot and PC1. Fully updated.
   \item Snapshot \texttt{01-clean-install-network-ok} taken.
-  \item Wazuh and Suricata not installed yet.
+  \item Wazuh installed in Phase~4; Suricata not installed yet.
 \end{itemize}
 
 \subsection{DC01}
@@ -310,13 +311,74 @@ dnscmd /ResetListenAddresses 10.10.10.10
 \end{enumerate}
 
 %--------------------------------------------------------------------
-\section{Open items (Phase 4 and later)}
+\section{Phase 4: Wazuh SIEM and agents}
 
-Wazuh, Suricata, Sysmon and the Wazuh agents are not installed yet.
+\subsection{Done}
 \begin{itemize}
-  \item Wazuh and Suricata on the SOC-Server.
-  \item Sysmon and Wazuh agent on WIN-CLIENT.
-  \item auditd, UFW and Wazuh agent on UBUNTU-SRV.
+  \item Wazuh 4.14.10 all-in-one installed on SOC-Server (10.10.10.20).
+  \item Agents registered on DC01, WIN-CLIENT and UBUNTU-SRV.
+  \item VMs moved from the USB disk to NVMe
+        (\texttt{C:\textbackslash VMs\textbackslash project}) to fix 100\%
+        disk activity and slowness.
+\end{itemize}
+
+\subsection{Problems and lessons learned}
+\begin{enumerate}
+  \item \textbf{Dashboard API errors.} The dashboard showed ``No API
+        available'' / HTTP 429. Cause: retries during start-up. Fix: wait
+        until the services are fully up and use one browser tab.
+\end{enumerate}
+
+%--------------------------------------------------------------------
+\section{Phase 5: Endpoint monitoring (Sysmon, auditd, FIM)}
+
+\subsection{Windows (WIN-CLIENT, DC01)}
+\begin{itemize}
+  \item Sysmon (SwiftOnSecurity config), collected by the Wazuh agent via an
+        \texttt{eventchannel} localfile.
+  \item Windows audit policies set with \texttt{auditpol}: Logon, Account
+        Lockout, Credential Validation, User/Group Management, Process
+        Creation; Kerberos on DC01.
+  \item Validated: a failed logon to DC01 from WIN-CLIENT produced Event 4625
+        and the rule ``Logon Failure - Unknown user or bad password''
+        (level~5).
+\end{itemize}
+
+\subsection{Linux (UBUNTU-SRV)}
+\begin{itemize}
+  \item auditd rules (\texttt{Configuration/\allowbreak auditd/\allowbreak soc.rules},
+        listed below) and FIM in realtime on
+        \texttt{/home/\allowbreak socadmin/\allowbreak fim-test}.
+  \item Validated: a file added in the FIM folder raised rule 554;
+        \texttt{useradd} / \texttt{userdel} produced rules 80781, 80791 and
+        80792.
+\end{itemize}
+
+Final auditd rules:
+\begin{lstlisting}
+-w /etc/passwd -p wa -k audit-wazuh-w
+-w /etc/shadow -p wa -k audit-wazuh-w
+-w /etc/sudoers -p wa -k audit-wazuh-w
+-w /etc/sudoers.d/ -p wa -k audit-wazuh-w
+-a always,exit -F arch=b64 -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k audit-wazuh-c
+\end{lstlisting}
+
+\subsection{Problems and lessons learned}
+\begin{enumerate}
+  \item \textbf{Noisy root \texttt{execve} rule.} The initial auditd rule
+        logging every root \texttt{execve} produced about 1,600 events in
+        15 minutes. Fix: restricted to \texttt{auid>=1000} and switched the
+        watch keys to \texttt{audit-wazuh-w} so the Wazuh built-in rules
+        fire.
+  \item \textbf{Time zones.} VM time zones differ (DC01 is on Pacific time).
+        UTC timestamps were verified correct.
+\end{enumerate}
+
+%--------------------------------------------------------------------
+\section{Open items (Phase 6 and later)}
+
+\begin{itemize}
+  \item Phase~6: Suricata IDS on the SOC-Server (next).
 \end{itemize}
 
 %--------------------------------------------------------------------
@@ -358,9 +420,9 @@ Phase & Description & Status \\
 1 & Infrastructure and network preparation & Done \\
 2 & VM deployment & Done \\
 3 & Active Directory & Done \\
-4 & Wazuh SIEM and agents & Next \\
-5 & Endpoint monitoring (Sysmon, auditd, FIM) & Pending \\
-6 & Suricata IDS & Pending \\
+4 & Wazuh SIEM and agents & Done \\
+5 & Endpoint monitoring (Sysmon, auditd, FIM) & Done \\
+6 & Suricata IDS & Next \\
 7 & Attack simulations & Pending \\
 8 & Detection engineering & Pending \\
 9 & Incident response & Pending \\
