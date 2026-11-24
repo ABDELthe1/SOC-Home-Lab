@@ -1,0 +1,69 @@
+# S4 - AD enumeration and password spray
+
+## Scenario
+
+AD reconnaissance and password spraying from the Parrot attacker (10.10.10.50) against DC01 (10.10.10.10), domain `SOC-LAB.LOCAL`.
+
+Tool: NetExec (`nxc`).
+
+Reconnaissance:
+- `nxc smb` enumeration confirmed DC01: Windows 10/Server 2019 build 17763, SMB signing enabled, Null Auth allowed on SMB.
+- Anonymous SMB user enumeration returned no users.
+- Anonymous LDAP bind was correctly rejected by AD ("operationsError, successful bind must be completed").
+
+Password spray:
+- 5 usernames (Administrator, socadmin, backdoor, admin, testuser) x 4 common passwords = 20 attempts via SMB/NTLM, with `--continue-on-success`.
+- 0 valid credentials found.
+
+## Objective
+
+Check that AD reconnaissance and a password spray against the Domain Controller are detected in Wazuh.
+
+## Scope
+
+Lab network 10.10.10.0/24 only, authorized. Source: Parrot (10.10.10.50). Target: DC01 (10.10.10.10), domain `SOC-LAB.LOCAL`.
+
+## Time
+
+2026-11-24, about 14:35 - 14:36.
+
+## Expected detections
+
+Windows logon failure alerts on DC01, escalated by Wazuh's built-in frequency correlation, as in the SSH brute-force scenario ([S1](S1_ssh-bruteforce-hydra.md)).
+
+## Detections observed
+
+| Rule | Level | Description | Hits |
+|---|---|---|---|
+| 60122 | 5 | Logon Failure - Unknown user or bad password | 20 |
+| 60204 | 10 | Multiple Windows Logon Failures | 2 |
+
+- Rule 60122 events: `data.win.eventdata.ipAddress` 10.10.10.50, `authenticationPackageName` NTLM, `logonType` 3 (network), targeting Administrator, testuser, socadmin, backdoor and admin.
+- Rule 60204 confirms that Wazuh's built-in frequency correlation detected the spray pattern (same mechanism as the SSH brute-force scenario).
+- No account lockout (event ID 4740) was triggered: the attempt volume stayed under the default lockout threshold, consistent with realistic low-and-slow spray behaviour.
+
+## Missed or weak detections
+
+Gap (Phase 8 target): no Kerberos pre-authentication coverage.
+- Wazuh's default ruleset (`0580-win-security_rules.xml`, `0220-msauth_rules.xml`) has explicit coverage for event ID 4769 (TGS / service ticket, rules 60106 / 60131), but no rule for 4768 (TGT requested) or 4771 (Kerberos pre-authentication failed).
+- Confirmed via a ruleset grep and a direct comparison with the native Windows Security log: 4768 was generated and logged locally but never reached the Wazuh alerts index.
+- A Kerberos-native password spray (rather than NTLM/SMB) could therefore evade detection entirely under the default ruleset, since 4771 is the primary signal for Kerberos pre-auth failures.
+- Detection in this run relied entirely on the NTLM/SMB path (4625-equivalent, rules 60122 / 60204), not on Kerberos telemetry.
+
+## MITRE ATT&CK
+
+| Technique | Name |
+|---|---|
+| T1087.002 | Account Discovery: Domain Account |
+| T1110.003 | Brute Force: Password Spraying |
+| T1021.002 | Remote Services: SMB/Windows Admin Shares (attempted access vector) |
+
+## Evidence
+
+- [Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png](../Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png) - the 20 rule 60122 hits
+- [Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png](../Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png) - rule 60204 escalation detail
+
+## Lessons
+
+- The NTLM/SMB spray was detected and escalated out of the box.
+- Planned Phase 8 fix: add custom local Wazuh rules for event IDs 4768 and 4771 on the win-security decoder, including a frequency-based rule for repeated 4771 events from one source (Kerberos-native spray / brute-force detection), to close the parity gap with the already-working NTLM detection path.

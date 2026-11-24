@@ -439,12 +439,76 @@ SID & Signature \\
 \end{enumerate}
 
 %--------------------------------------------------------------------
+\section{Phase 7: Attack simulations (in progress)}
+
+\subsection{Scenario 4: AD enumeration and password spray (complete)}
+
+AD reconnaissance and password spraying with NetExec (\texttt{nxc}) from
+Parrot (10.10.10.50) against DC01 (10.10.10.10), domain
+\texttt{SOC-LAB.LOCAL}, on 2026-11-24 at about 14:35--14:36. Lab
+10.10.10.0/24 only, authorized.
+
+\paragraph{Reconnaissance.}
+\begin{itemize}
+  \item \texttt{nxc smb} enumeration confirmed DC01: Windows 10/Server 2019
+        build 17763, SMB signing enabled, Null Auth allowed on SMB.
+  \item Anonymous SMB user enumeration returned no users.
+  \item Anonymous LDAP bind was correctly rejected by AD
+        (``operationsError, successful bind must be completed'').
+\end{itemize}
+
+\paragraph{Password spray.} 5 usernames x 4 common passwords = 20 attempts
+via SMB/NTLM with \texttt{-{}-continue-on-success}. 0 valid credentials
+found.
+
+\paragraph{Detections observed.}
+\begin{table}[h]
+\centering
+\begin{tabular}{rrlr}
+\toprule
+Rule & Level & Description & Hits \\
+\midrule
+60122 & 5 & Logon Failure - Unknown user or bad password & 20 \\
+60204 & 10 & Multiple Windows Logon Failures & 2 \\
+\bottomrule
+\end{tabular}
+\caption{Wazuh alerts from the password spray}
+\end{table}
+
+\begin{itemize}
+  \item Rule 60122 events: source IP 10.10.10.50, authentication package
+        NTLM, logon type 3 (network).
+  \item Rule 60204 confirms that Wazuh's built-in frequency correlation
+        detected the spray pattern (same mechanism as the SSH brute-force
+        scenario).
+  \item No account lockout (event ID 4740): the attempt volume stayed under
+        the default lockout threshold, consistent with realistic low-and-slow
+        spray behaviour.
+\end{itemize}
+
+\paragraph{Phase 8 finding: Kerberos gap.} The default Wazuh ruleset
+(\texttt{0580-win-\allowbreak security\_\allowbreak rules.xml},
+\texttt{0220-msauth\_\allowbreak rules.xml})
+covers event ID 4769 (TGS, rules 60106 / 60131) but has no rule for 4768
+(TGT requested) or 4771 (Kerberos pre-authentication failed). 4768 was
+generated and logged locally on DC01 but never reached the Wazuh alerts
+index. A Kerberos-native password spray could therefore evade detection
+under the default ruleset; detection in this run relied entirely on the
+NTLM/SMB path (rules 60122 / 60204). Planned fix: custom local rules for
+4768 and 4771 on the win-security decoder, including a frequency rule for
+repeated 4771 events from one source.
+
+\paragraph{MITRE ATT\&CK.} T1087.002 Domain Account Discovery, T1110.003
+Password Spraying, T1021.002 SMB/Windows Admin Shares (attempted access
+vector).
+
+%--------------------------------------------------------------------
 \section{Open items (Phase 7 and later)}
 
 \begin{itemize}
-  \item Phase~7: attack simulations (next).
+  \item Phase~7: remaining attack scenarios.
   \item Phase~8: custom detection rules and tuning of the SURICATA STREAM
-        alerts.
+        alerts; Kerberos 4768 / 4771 rules (Scenario 4 finding).
 \end{itemize}
 
 %--------------------------------------------------------------------

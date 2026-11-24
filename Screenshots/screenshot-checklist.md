@@ -25,7 +25,7 @@ Per scenario: one screenshot of the attack, one of the Wazuh/Suricata alert (wit
 - [ ] `S1-01_hydra-attack.png` / `S1-02_alert-ssh-bruteforce.png`
 - [ ] `S2-01_nmap-scan.png` / `S2-02_alert-suricata-portscan.png`
 - [ ] `S3-01_powershell-command.png` / `S3-02_alert-suspicious-powershell.png`
-- [ ] `S4-01_netexec-impacket-enum.png` / `S4-02_alert-ad-enumeration.png`
+- [x] `S4_ad-spray-rule60122-list-20hits.png` / `S4_ad-spray-rule60204-escalation-detail.png`
 - [ ] `S5-01_sudo-privilege-activity.png` / `S5-02_alert-auditd-sudo.png`
 - [ ] `S6-01_incident-timeline.png` / `S6-02_containment-and-recovery.png`
 
