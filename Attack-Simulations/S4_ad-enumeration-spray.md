@@ -44,7 +44,7 @@ Windows logon failure alerts on DC01, escalated by Wazuh's built-in frequency co
 
 ## Missed or weak detections
 
-Gap (Phase 8 target): no Kerberos pre-authentication coverage.
+Gap (Phase 8 target): Kerberos failures detected only generically (rule 60104, level 5), with no Kerberos identification or spray correlation.
 - Wazuh's default ruleset (`0580-win-security_rules.xml`, `0220-msauth_rules.xml`) has explicit coverage for event ID 4769 (TGS / service ticket, rules 60106 / 60131), but no Kerberos-specific rule for 4768 (TGT requested) or 4771 (Kerberos pre-authentication failed).
 - These events were caught generically by rule 60104 (Windows audit failure, level 5), but without Kerberos-specific identification or spray correlation.
 - A Kerberos-native password spray (rather than NTLM/SMB) would therefore surface only as undifferentiated level 5 audit failures, with no spray escalation, since 4771 is the primary signal for Kerberos pre-auth failures. The Phase 8 fix now adds this ([phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md)).
@@ -66,4 +66,4 @@ Gap (Phase 8 target): no Kerberos pre-authentication coverage.
 ## Lessons
 
 - The NTLM/SMB spray was detected and escalated out of the box.
-- Planned Phase 8 fix: add custom local Wazuh rules for event IDs 4768 and 4771 on the win-security decoder, including a frequency-based rule for repeated 4771 events from one source (Kerberos-native spray / brute-force detection), to close the parity gap with the already-working NTLM detection path.
+- Phase 8 fix (done): custom local Wazuh rules 100005 (4771), 100006 (4768) and 100007 (frequency correlation, level 12) close the parity gap with the already-working NTLM detection path. Validated live with a kerbrute password spray: 5 x level 8 rule 100005 and 1 x level 12 rule 100007. See [phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md).
