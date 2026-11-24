@@ -6,7 +6,7 @@ Rule: one screenshot must prove one thing. Skip anything that only shows a step 
 
 ## Infrastructure (4)
 
-- [ ] `INF-01_architecture-diagram.png` - exported Excalidraw diagram [LinkedIn]
+- [x] `INF-01_architecture-diagram.png` - exported Excalidraw diagram [LinkedIn]
 - [x] `INF-02_vmware-all-vms-running.png` - four VMs running in VMware
 - [x] `INF-03_wazuh-dashboard-agents-active.png` - three agents Active in the Wazuh dashboard [LinkedIn]
 - [x] `INF-04_domain-users-and-ous.png` - Active Directory users and OUs (SOC-LAB.LOCAL)

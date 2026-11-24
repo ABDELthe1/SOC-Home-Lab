@@ -17,9 +17,9 @@ Enterprise-inspired Security Operations Center (SOC) built at home: a Wazuh SIEM
 
 ## 2. Architecture
 
-![Architecture](Architecture/soc-architecture.png)
+![SOC Home Lab Architecture](Architecture/soc-architecture.png)
 
-> Export the Excalidraw diagram to `Architecture/soc-architecture.png`.
+*Network architecture: logical isolation on the home LAN via IP aliasing, isolated lab subnet 10.10.10.0/24, and the role of each VM.*
 
 | Component | Role |
 |---|---|
