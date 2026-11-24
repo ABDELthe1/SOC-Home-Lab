@@ -67,7 +67,7 @@ Gaps (Phase 8 targets):
 
 ## Lessons
 
-The activity was logged, but it was not prioritised and partly invisible to FIM. Planned Phase 8 fixes:
+The activity was logged, but it was not prioritised and partly invisible to FIM. Phase 8 fix (done): `<syscheck>` scope expanded and rules 100002-100004 added (level 12 sudoers/cron, level 10 `/etc/passwd` / `/etc/shadow`, level 7 `/tmp`), validated by 2 x level 12 rule 100002 alerts after touching `/etc/cron.d/test-persistence` (P8-01); see [phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md). The original Phase 8 plan was:
 - Add `/etc/cron.d`, `/etc/cron.daily`, `/tmp` and `/usr/local/bin` to syscheck realtime monitoring.
 - Add custom Wazuh local rules that raise severity when `usermod` / `gpasswd` target the sudo or wheel group, and when `chmod` sets the SUID bit.
 - Consider a rule on `history -c` / `HISTFILE` tampering.
