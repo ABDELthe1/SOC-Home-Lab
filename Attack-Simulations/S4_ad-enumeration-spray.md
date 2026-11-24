@@ -35,7 +35,7 @@ Windows logon failure alerts on DC01, escalated by Wazuh's built-in frequency co
 
 | Rule | Level | Description | Hits |
 |---|---|---|---|
-| 60122 | 5 | Logon Failure - Unknown user or bad password | 20 |
+| 60122 | 5 | Logon Failure - Unknown user or bad password | 18 |
 | 60204 | 10 | Multiple Windows Logon Failures | 2 |
 
 - Rule 60122 events: `data.win.eventdata.ipAddress` 10.10.10.50, `authenticationPackageName` NTLM, `logonType` 3 (network), targeting Administrator, testuser, socadmin, backdoor and admin.
@@ -60,7 +60,7 @@ Gap (Phase 8 target): no Kerberos pre-authentication coverage.
 
 ## Evidence
 
-- [Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png](../Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png) - the 20 rule 60122 hits
+- [Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png](../Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png) - the 18 rule 60122 hits
 - [Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png](../Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png) - rule 60204 escalation detail
 
 ## Lessons

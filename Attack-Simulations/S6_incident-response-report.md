@@ -33,7 +33,7 @@ The first high-severity signal is rule **60204 "Multiple Windows Logon Failures"
 
 | Rule | Level | Description | Hits |
 |---|---|---|---|
-| 60122 | 5 | Logon Failure - Unknown user or bad password | 20 |
+| 60122 | 5 | Logon Failure - Unknown user or bad password | 18 |
 | 60204 | 10 | Multiple Windows Logon Failures | 2 |
 
 Key fields on the rule 60122 events:
@@ -47,7 +47,7 @@ Key fields on the rule 60122 events:
 | Time | Event |
 |---|---|
 | ~14:35 | SMB enumeration of DC01 from 10.10.10.50; anonymous SMB user enumeration returns no users; anonymous LDAP bind rejected by AD |
-| ~14:35 - 14:36 | 20 NTLM authentication attempts against 5 accounts (4 passwords each); 20 x rule 60122 |
+| ~14:35 - 14:36 | 20 NTLM authentication attempts against 5 accounts (4 passwords each); 18 x rule 60122 |
 | ~14:35 - 14:36 | Rule 60204 fires twice: Wazuh's frequency correlation flags the pattern |
 
 ### Analysis
@@ -78,7 +78,7 @@ Lab-appropriate steps:
 
 ### What worked
 
-The NTLM/SMB spray was detected out of the box: 20 individual failures (rule 60122) were correlated into a level 10 alert (rule 60204) without custom rules, the same mechanism that detected the SSH brute force in [S1](S1_ssh-bruteforce-hydra.md).
+The NTLM/SMB spray was detected out of the box: 18 individual failures (rule 60122) were correlated into a level 10 alert (rule 60204) without custom rules, the same mechanism that detected the SSH brute force in [S1](S1_ssh-bruteforce-hydra.md).
 
 ### Gap: no Kerberos pre-authentication coverage
 
@@ -93,5 +93,5 @@ Add custom local Wazuh rules for event IDs 4768 and 4771 on the win-security dec
 ## Evidence
 
 - [Screenshots/attack-evidence/S6-01_incident-timeline.png](../Screenshots/attack-evidence/S6-01_incident-timeline.png) - incident timeline: Wazuh Threat Hunting dashboard filtered on rules 60204 / 60122 for 2026-11-24, all alerts from DC01
-- [Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png](../Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png) - the 20 rule 60122 hits
+- [Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png](../Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png) - the 18 rule 60122 hits
 - [Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png](../Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png) - rule 60204 escalation detail
