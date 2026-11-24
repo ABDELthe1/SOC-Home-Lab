@@ -512,6 +512,13 @@ vector).
   \item Phase~7: remaining attack scenarios.
   \item Phase~8: custom detection rules and tuning of the SURICATA STREAM
         alerts.
+  \item Phase~8: severity escalation when \texttt{usermod} /
+        \texttt{gpasswd} add a user to the sudo or wheel group (Scenario 5
+        plan, not implemented).
+  \item Phase~8: detection of \texttt{chmod} setting the SUID bit
+        (Scenario 5 plan, not implemented).
+  \item Phase~8: detection of shell history tampering (\texttt{history -c} /
+        \texttt{HISTFILE}) (Scenario 5 plan, not implemented).
 \end{itemize}
 
 %--------------------------------------------------------------------
