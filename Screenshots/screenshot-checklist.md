@@ -27,7 +27,8 @@ Per scenario: one screenshot of the attack, one of the Wazuh/Suricata alert (wit
 - [ ] `S3-01_powershell-command.png` / `S3-02_alert-suspicious-powershell.png`
 - [x] `S4_ad-spray-rule60122-list-20hits.png` / `S4_ad-spray-rule60204-escalation-detail.png`
 - [ ] `S5-01_sudo-privilege-activity.png` / `S5-02_alert-auditd-sudo.png`
-- [ ] `S6-01_incident-timeline.png` / `S6-02_containment-and-recovery.png`
+- [ ] `S6-01_incident-timeline.png`
+- [x] `S6-02_containment-and-recovery.png` - N/A, not performed: containment and eradication in the S6 report are documented as recommended procedure only, not executed in the lab, so no screenshot applies
 
 ## Detection engineering (2)
 
