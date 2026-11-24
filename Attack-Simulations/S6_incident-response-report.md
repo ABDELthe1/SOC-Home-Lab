@@ -92,5 +92,6 @@ Add custom local Wazuh rules for event IDs 4768 and 4771 on the win-security dec
 
 ## Evidence
 
+- [Screenshots/attack-evidence/S6-01_incident-timeline.png](../Screenshots/attack-evidence/S6-01_incident-timeline.png) - incident timeline: Wazuh Threat Hunting dashboard filtered on rules 60204 / 60122 for 2026-11-24, all alerts from DC01
 - [Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png](../Screenshots/attack-evidence/S4_ad-spray-rule60122-list-20hits.png) - the 20 rule 60122 hits
 - [Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png](../Screenshots/attack-evidence/S4_ad-spray-rule60204-escalation-detail.png) - rule 60204 escalation detail
