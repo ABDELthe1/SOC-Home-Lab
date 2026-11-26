@@ -88,7 +88,7 @@ The NTLM/SMB spray was detected out of the box: 18 individual failures (rule 601
 
 ### Action item (Phase 8) - completed
 
-Custom local Wazuh rules 100005 (4771), 100006 (4768) and 100007 (frequency correlation, level 12) were added, closing the parity gap with the NTLM detection path. Validated live with a kerbrute password spray against Administrator from 10.10.10.50: 5 x level 8 rule 100005 and 1 x level 12 rule 100007. See [phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md).
+Custom local Wazuh rules 100005 (4771), 100006 (4768) and 100007 (frequency correlation, level 12) were added, closing the parity gap with the NTLM detection path. Validated live with a kerbrute password spray against Administrator from 10.10.10.50: 5 x level 8 rule 100005 and 1 x level 12 rule 100007; rule 100006 was not triggered in that test. See [phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md).
 
 ## Evidence
 

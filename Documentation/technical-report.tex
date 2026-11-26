@@ -36,8 +36,10 @@ attacked in a controlled way from a separate Parrot Security workstation. The
 full cycle is practiced and documented: attack, collect, detect, alert,
 investigate, contain, remediate, report. This report covers Phase~1 (network
 preparation), Phase~2 (VM deployment), Phase~3 (Active Directory), Phase~4
-(Wazuh SIEM and agents), Phase~5 (endpoint monitoring) and Phase~6 (Suricata
-IDS), which are complete. Phase~7 (attack simulations) is next.
+(Wazuh SIEM and agents), Phase~5 (endpoint monitoring), Phase~6 (Suricata
+IDS), Phase~7 (attack simulations), Phase~8 (detection engineering) and
+Phase~9 (incident response), which are complete. Phase~10 (final
+documentation) is in progress.
 \end{abstract}
 
 \tableofcontents
@@ -400,7 +402,7 @@ Final auditd rules:
   \item Suricata built-in rules from
         \texttt{/usr/share/\allowbreak suricata/\allowbreak rules} (decoder,
         app-layer and stream events).
-  \item No custom rules yet (Phase~8).
+  \item No custom Suricata rules yet (open item).
 \end{itemize}
 
 \subsection{Validation}
@@ -435,11 +437,80 @@ SID & Signature \\
   \item \textbf{Manager events.} Manager events (agent 000) are only visible
         in the global Threat Hunting view.
   \item \textbf{Noisy stream alerts.} Generic SURICATA STREAM alerts are
-        noisy; they will be tuned in Phase~8.
+        noisy; their tuning is still an open item.
 \end{enumerate}
 
 %--------------------------------------------------------------------
-\section{Phase 7: Attack simulations (in progress)}
+\section{Phase 7: Attack simulations}
+
+All five planned scenarios were executed inside the lab network
+10.10.10.0/24 and are documented in \texttt{Attack-Simulations/}, one record
+per scenario.
+
+\subsection{Scenario 1: SSH brute force (complete)}
+
+Hydra v9.5 from Parrot (10.10.10.50) against UBUNTU-SRV (10.10.10.40) on
+2026-11-23, 17:27:59--17:28:24: 4 usernames x 8 passwords (32 combinations),
+\texttt{-t 4}. 0 valid credentials found.
+
+\begin{itemize}
+  \item Individual failures: rules 5760 (sshd: authentication failed) and
+        5710 (sshd: attempt to login using a non-existent user).
+  \item Escalation: rules 5712 (brute force, non-existent user) and 5763
+        (brute force, authentication failed), both level~10 with
+        \texttt{rule.frequency} 8 and source 10.10.10.50.
+  \item 46 sshd events in the 15-minute window: 45 failures and 1 unrelated
+        legitimate success (rule 5715) from an earlier manual test.
+  \item Suricata cross-check: ET SCAN Potential SSH Scan (SID 2001219) fired
+        on the same connections.
+\end{itemize}
+
+Assessment: clean detection with built-in rules, no Phase~8 gap. MITRE
+ATT\&CK: T1110 Brute Force, T1110.001 Password Guessing.
+
+\subsection{Scenario 2: Network reconnaissance with Nmap (complete)}
+
+\texttt{nmap -sS -sV -O -T4 -p 1-1000} from Parrot against UBUNTU-SRV on
+2026-11-20 (about 21:08 and 21:15). The four Suricata alerts listed in the
+Phase~6 validation (SIDs 2001219, 2018489, 2200025, 2200130) reached Wazuh as
+rule 86601, level~3.
+
+Gaps: all scan alerts are only level~3, there is no host-side detection on
+UBUNTU-SRV, and repeated scan alerts are not correlated. Planned fixes (not
+implemented): a custom Wazuh rule raising the severity of ET SCAN alerts and a
+correlation rule for repeated scan alerts from one source. MITRE ATT\&CK:
+T1046 Network Service Discovery, T1595 Active Scanning.
+
+\subsection{Scenario 3: Suspicious PowerShell (complete)}
+
+Local execution on WIN-CLIENT (10.10.10.30) on 2026-11-23, about
+17:58--18:03, with PowerShell Script Block Logging and Transcription enabled
+and a Wazuh localfile for \texttt{Microsoft-Windows-PowerShell/Operational}:
+reconnaissance commands, process discovery, a base64-encoded command and an
+attempted download cradle (it failed because the target listens on HTTPS, not
+HTTP; the connection attempt was still logged).
+
+\begin{table}[h]
+\centering
+\small
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\begin{tabularx}{\textwidth}{rrLr}
+\toprule
+Rule & Level & Description & Hits \\
+\midrule
+92057 & 12 & Powershell.exe spawned a powershell process which executed a base64 encoded command & 2 \\
+92201 & 9 & ...created a new scripting file under Windows Temp or User data folder & \\
+92066 & 4 & SecEdit.exe binary in a suspicious location launched by powershell.exe & \\
+91815 & 4 & Powershell executing process discovery & \\
+91816 & 4 & Powershell script querying system environment variables & \\
+\bottomrule
+\end{tabularx}
+\caption{Wazuh alerts from the PowerShell scenario (21 hits in total)}
+\end{table}
+
+Assessment: strong out-of-the-box detection (built-in rules only, base64
+obfuscation scored at level~12), no Phase~8 gap. MITRE ATT\&CK: T1059.001,
+T1027, T1082, T1049, T1105 (attempted, failed).
 
 \subsection{Scenario 4: AD enumeration and password spray (complete)}
 
@@ -476,6 +547,8 @@ Rule & Level & Description & Hits \\
 \end{table}
 
 \begin{itemize}
+  \item The dashboard total for both rules is 20 (18 + 2), confirmed by
+        per-rule views (evidence \texttt{S6-01b} and \texttt{S6-01c}).
   \item Rule 60122 events: source IP 10.10.10.50, authentication package
         NTLM, logon type 3 (network).
   \item Rule 60204 confirms that Wazuh's built-in frequency correlation
@@ -496,47 +569,137 @@ level~5), but without Kerberos-specific identification or spray correlation.
 A Kerberos-native password spray would therefore surface only as
 undifferentiated level~5 audit failures, with no spray escalation; detection
 in this run relied entirely on the NTLM/SMB path (rules 60122 / 60204). The
-Phase~8 fix now adds this. Fix implemented and validated: custom local rules
-100005 (4771), 100006 (4768) and 100007 (frequency correlation, level~12);
-a live kerbrute password spray produced 5 x level~8 rule 100005 and
-1 x level~12 rule 100007 (see \texttt{phase8-detection-engineering.md}).
+Phase~8 fix now adds this: custom local rules 100005 (4771), 100006 (4768)
+and 100007 (frequency correlation, level~12). A live kerbrute password spray
+produced 5 x level~8 rule 100005 and 1 x level~12 rule 100007; rule 100006
+was not triggered in that test (see Phase~8).
 
 \paragraph{MITRE ATT\&CK.} T1087.002 Domain Account Discovery, T1110.003
 Password Spraying, T1021.002 SMB/Windows Admin Shares (attempted access
 vector).
 
-\paragraph{Phase 8 fixes from the Scenario 5 plan.}
+\subsection{Scenario 5: Linux privilege escalation and persistence (complete)}
+
+Local, authorized self-test on UBUNTU-SRV (10.10.10.40) on 2026-11-23, about
+17:35--17:36: \texttt{useradd backdoor}; \texttt{usermod -aG sudo backdoor};
+\texttt{chpasswd} for \texttt{backdoor}; cron persistence via
+\texttt{/etc/cron.d/system-update} (fake callback to 10.10.10.50);
+\texttt{chmod +s} on a copy of \texttt{/bin/bash} at \texttt{/tmp/rootbash};
+\texttt{history -c}.
+
 \begin{itemize}
-  \item \textbf{SUID detection (\texttt{chmod}): fix implemented and
-        validated.} FIM extended to \texttt{/usr/local/bin},
-        \texttt{/usr/bin} and \texttt{/usr/sbin}; rule 100009 (level~12)
-        fired on \texttt{chmod u+s} (\texttt{rwxr-xr-x} $\rightarrow$
-        \texttt{rwsr-xr-x}) and did not fire on \texttt{chmod u-s}.
-        Caveat: only the \texttt{rws} pattern is matched, so SUID on a
-        non-executable file (\texttt{rwS}) is not caught.
-  \item \textbf{History tampering detection: fix implemented and
-        validated.} FIM extended to \texttt{.bash\_history}; rule 100010
-        (level~12) fired on modification (rule 550) and deletion (rule 553).
-        Caveat: it fires on any \texttt{.bash\_history} change, not only
-        malicious clearing, and the in-memory \texttt{history -c} and
-        \texttt{HISTFILE} tampering remain undetected.
-  \item \textbf{Privilege group modification (\texttt{usermod} /
-        \texttt{gpasswd}): fix implemented and validated.} Rule 100008
-        (level~10) on execve audit events fired on a live \texttt{sudo
-        usermod} group modification, identifying the command and acting uid.
-        Caveat: it escalates on any \texttt{usermod} / \texttt{gpasswd} run,
-        not only ones targeting a privileged group; the target group must be
-        checked in the raw log.
+  \item At the time: 229 audit events, all level~3 (rules 80792 and 80791),
+        and 0 FIM (syscheck) results, because FIM did not cover \texttt{/tmp}
+        or \texttt{/etc/cron.d}.
+  \item Ground truth: \texttt{getent group sudo} showed
+        \texttt{sudo:x:27:socadmin,backdoor}; the privilege escalation
+        succeeded.
+  \item Gaps: flat level~3 severity, FIM scope, descriptions showing only the
+        command name, and no rule for history clearing. All are addressed in
+        Phase~8 except the in-memory \texttt{history -c} itself.
 \end{itemize}
-Details: \texttt{phase8-detection-engineering.md}.
+
+MITRE ATT\&CK: T1136.001, T1098.007 / T1548.003, T1053.003, T1548.001,
+T1070.003.
 
 %--------------------------------------------------------------------
-\section{Open items (Phase 7 and later)}
+\section{Phase 8: Detection engineering}
+
+Custom local rules on SOC-Server and FIM changes on UBUNTU-SRV close the gaps
+found in Scenarios 4 and 5. The deployed XML, validation details and known
+limitations are in \texttt{phase8-detection-engineering.md}.
+
+\paragraph{FIM scope.} Expanded on UBUNTU-SRV beyond the single test directory
+\texttt{/home/\allowbreak socadmin/\allowbreak fim-test} to \texttt{/etc/passwd},
+\texttt{/etc/shadow}, \texttt{/etc/sudoers}, \texttt{/etc/sudoers.d}, the
+cron locations, \texttt{/tmp}, \texttt{/usr/local/bin}, \texttt{/usr/bin},
+\texttt{/usr/sbin} and \texttt{.bash\_history} (the test directory stays monitored).
+
+\begin{table}[h]
+\centering
+\small
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\begin{tabularx}{\textwidth}{rrLL}
+\toprule
+Rule & Level & Detects & Validation \\
+\midrule
+100002 & 12 & Sudoers or cron file added/modified (FIM) & 2 alerts on \texttt{/etc/cron.d/test-persistence} (P8-01) \\
+100003 & 10 & \texttt{/etc/passwd} or \texttt{/etc/shadow} modified (FIM) & No validation alert recorded \\
+100004 & 7 & File written to \texttt{/tmp} (FIM) & No validation alert recorded \\
+100005 & 8 & Kerberos pre-authentication failure (4771, from rule 60104) & 5 hits in a kerbrute spray (P8-02) \\
+100006 & 8 & Failed TGT request (4768, non-zero status) & Not triggered in the kerbrute test \\
+100007 & 12 & Kerberos spray: 5 failures in 120\,s from one source & 1 hit at the 5th attempt (P8-02) \\
+100008 & 10 & \texttt{usermod} / \texttt{gpasswd} executed (from rule 80792) & 1 alert on a live \texttt{sudo usermod} (2026-11-26) \\
+100009 & 12 & SUID bit set (\texttt{rws}, from rule 550) & Fired on \texttt{chmod u+s}, silent on \texttt{chmod u-s} \\
+100010 & 12 & \texttt{.bash\_history} modified or deleted (rules 550 / 553) & Fired on append and on deletion \\
+\bottomrule
+\end{tabularx}
+\caption{Phase 8 custom rules}
+\end{table}
+
+Before-fix evidence: \texttt{P8-01a} shows the Phase~5 baseline (1,596 audit
+events in 15 minutes, all rule 80792 at level~3, before the root-execve rule
+was restricted to \texttt{auid>=1000}); \texttt{P8-03a}--\texttt{P8-03c} show
+the S5 \texttt{usermod} events at generic level~3.
+
+\paragraph{Known limitations.}
+\begin{itemize}
+  \item Rule 100008 escalates on any \texttt{usermod} / \texttt{gpasswd} run,
+        not only ones targeting a privileged group; the target group must be
+        checked in the raw log.
+  \item Rule 100009 only matches \texttt{rws}, so SUID on a non-executable
+        file (\texttt{rwS}) is not caught; it was validated in
+        \texttt{/usr/local/bin}.
+  \item Rule 100010 fires on any \texttt{.bash\_history} change, including
+        normal growth; the in-memory \texttt{history -c} and \texttt{HISTFILE}
+        tampering remain undetected.
+  \item Rules 100003, 100004 and 100006 have no recorded validation.
+  \item \texttt{\$(agent.name)} renders blank in the descriptions of rules
+        100008--100010 (cosmetic; the raw alert fields are correct).
+  \item An auditd syscall watch for \texttt{chmod} was kernel-correct but its
+        events never reached the Wazuh alerts, so FIM was used instead.
+\end{itemize}
+
+%--------------------------------------------------------------------
+\section{Phase 9: Incident response}
+
+Two incident reports follow the NIST SP 800-61 lifecycle (preparation;
+detection and analysis; containment; eradication and recovery;
+post-incident activity). In both, containment, eradication and recovery are
+documented as recommended procedure only; they were not executed in the lab.
+
+\subsection{S6: AD password spray against DC01}
+
+Based on Scenario 4. The first high-severity signal is rule 60204 (level~10,
+fired twice) over 18 rule 60122 events from 10.10.10.50 (NTLM, logon type 3)
+on 2026-11-24, about 14:35--14:36; 0 valid credentials, no lockout. Lessons:
+the NTLM/SMB path was detected out of the box, and the generic-only Kerberos
+gap is closed by rules 100005--100007. Evidence: the incident timeline
+(\texttt{S6-01}) and the per-rule counts backing 18 + 2 = 20
+(\texttt{S6-01b}, \texttt{S6-01c}).
+
+\subsection{S7: Linux privilege escalation and persistence on UBUNTU-SRV}
+
+Based on Scenario 5. At the time of the incident the highest alert was
+level~3. The report maps each step of the attack chain to the Phase~8 rules
+100002--100010 with their validation status, and states explicitly that it
+combines evidence captured at different times (the 2026-11-23 incident and the
+later Phase~8 validations) rather than a single live re-run. Still open: the
+in-memory \texttt{history -c} used in the attack is not detected, rules 100003
+and 100004 are not validated, and rule 100009 was validated in
+\texttt{/usr/local/bin}, not in \texttt{/tmp} where the backdoor was placed.
+
+%--------------------------------------------------------------------
+\section{Open items}
 
 \begin{itemize}
-  \item Phase~7: remaining attack scenarios.
-  \item Phase~8: custom detection rules and tuning of the SURICATA STREAM
-        alerts.
+  \item Tuning of the SURICATA STREAM alerts.
+  \item Scenario 2 fixes: custom rule raising ET SCAN severity and a
+        correlation rule for repeated scan alerts from one source.
+  \item Validation of rules 100003, 100004 and 100006.
+  \item Detection of in-memory \texttt{history -c} / \texttt{HISTFILE}
+        tampering (needs shell-session auditing; out of current scope).
+  \item Phase~10: final documentation.
 \end{itemize}
 
 %--------------------------------------------------------------------
@@ -581,10 +744,10 @@ Phase & Description & Status \\
 4 & Wazuh SIEM and agents & Done \\
 5 & Endpoint monitoring (Sysmon, auditd, FIM) & Done \\
 6 & Suricata IDS & Done \\
-7 & Attack simulations & Next \\
-8 & Detection engineering & Pending \\
-9 & Incident response & Pending \\
-10 & Final documentation & Pending \\
+7 & Attack simulations & Done \\
+8 & Detection engineering & Done \\
+9 & Incident response & Done \\
+10 & Final documentation & In progress \\
 \bottomrule
 \end{tabularx}
 \caption{Phase status}

@@ -66,4 +66,4 @@ Gap (Phase 8 target): Kerberos failures detected only generically (rule 60104, l
 ## Lessons
 
 - The NTLM/SMB spray was detected and escalated out of the box.
-- Phase 8 fix (done): custom local Wazuh rules 100005 (4771), 100006 (4768) and 100007 (frequency correlation, level 12) close the parity gap with the already-working NTLM detection path. Validated live with a kerbrute password spray: 5 x level 8 rule 100005 and 1 x level 12 rule 100007. See [phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md).
+- Phase 8 fix (done): custom local Wazuh rules 100005 (4771), 100006 (4768) and 100007 (frequency correlation, level 12) close the parity gap with the already-working NTLM detection path. Validated live with a kerbrute password spray: 5 x level 8 rule 100005 and 1 x level 12 rule 100007; rule 100006 was not triggered in that test. See [phase8-detection-engineering.md](../Documentation/phase8-detection-engineering.md).
