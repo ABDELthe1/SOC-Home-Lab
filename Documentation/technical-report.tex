@@ -66,12 +66,12 @@ documentation) is in progress.
 \toprule
 Component & Role \\
 \midrule
-PC1 (Windows 11 + VMware Workstation) & Hosts 4 VMs \\
-PC2 (Parrot Security 7.4) & Red Team / attacker workstation (physical machine) \\
-VM1 SOC Server & Wazuh Manager + Indexer + Dashboard, Suricata IDS \\
-VM2 Windows Server 2019 & Domain Controller (AD DS, DNS), Sysmon, Wazuh agent \\
-VM3 Windows 10 Pro & Domain-joined employee workstation, Sysmon, Wazuh agent \\
-VM4 Ubuntu Server 24.04 & Linux server, SSH, auditd, UFW, Wazuh agent \\
+PC1 (Windows 11 + VMware Workstation) & Hosts the 4 VMs \\
+PC2 (Parrot Security 7.4) & Attacker workstation (physical machine) \\
+SOC-Server & Wazuh manager, indexer and dashboard; Suricata IDS \\
+DC01 & Domain Controller (AD DS, DNS) for \texttt{SOC-LAB.LOCAL}; Sysmon; Wazuh agent \\
+WIN-CLIENT & Domain-joined workstation; Sysmon; PowerShell logging; Wazuh agent \\
+UBUNTU-SRV & Linux server; SSH; auditd; FIM; Wazuh agent \\
 \bottomrule
 \end{tabularx}
 \caption{Lab components}
@@ -703,9 +703,11 @@ and 100004 are not validated, and rule 100009 was validated in
 \end{itemize}
 
 %--------------------------------------------------------------------
-\section{Planned attack scenarios}
+\section{Attack scenarios summary}
 
-All attacks stay inside the authorized lab network 10.10.10.0/24.
+All attacks stay inside the authorized lab network 10.10.10.0/24. S1--S5 are
+attack records (Phase~7); S6 and S7 are the incident response reports
+(Phase~9).
 
 \begin{table}[h]
 \centering
@@ -713,17 +715,18 @@ All attacks stay inside the authorized lab network 10.10.10.0/24.
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \begin{tabularx}{\textwidth}{cLLLL}
 \toprule
-\# & Scenario & Source $\rightarrow$ Target & Tools & Detection \\
+ID & Scenario & Source $\rightarrow$ Target & Tools & Detection \\
 \midrule
-1 & Brute force & Parrot $\rightarrow$ Ubuntu / DC & Hydra & Auth logs + Wazuh rules \\
-2 & Port scanning & Parrot $\rightarrow$ DC / Ubuntu & Nmap & Suricata \\
-3 & Suspicious PowerShell & Windows client & PowerShell & Sysmon + Wazuh \\
-4 & AD attacks & Parrot $\rightarrow$ DC & Impacket, NetExec, BloodHound & Windows Security + Sysmon + Wazuh \\
-5 & Linux privilege indicators & Parrot / local $\rightarrow$ Ubuntu & CLI, SSH & auditd + Wazuh \\
-6 & Incident response & Alerts from 1--5 & Wazuh dashboard & Full investigation and report \\
+S1 & SSH brute force & Parrot $\rightarrow$ UBUNTU-SRV & Hydra & Built-in rules 5712 / 5763 (level~10) \\
+S2 & Network reconnaissance & Parrot $\rightarrow$ UBUNTU-SRV & Nmap & Suricata ET SCAN alerts, rule 86601 (level~3) \\
+S3 & Suspicious PowerShell & Local on WIN-CLIENT & PowerShell & Sysmon / PowerShell rules, 92057 (level~12) \\
+S4 & AD enumeration and password spray & Parrot $\rightarrow$ DC01 & NetExec & Rules 60122 / 60204 (level~10) \\
+S5 & Linux privilege escalation and persistence & Local on UBUNTU-SRV & Shell commands & Generic audit rules 80792 / 80791 (level~3) \\
+S6 & Incident response report (S4) & -- & Wazuh dashboard & NIST SP 800-61 report \\
+S7 & Incident response report (S5) & -- & Wazuh dashboard & NIST SP 800-61 report, mapped to rules 100002--100010 \\
 \bottomrule
 \end{tabularx}
-\caption{Attack scenarios}
+\caption{Attack scenarios as executed}
 \end{table}
 
 A detection counts as successful only when the event is generated, collected,
