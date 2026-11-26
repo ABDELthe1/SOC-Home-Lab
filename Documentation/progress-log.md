@@ -159,3 +159,90 @@ Started building a SOC home lab: Wazuh SIEM + Suricata IDS monitoring an Active 
 **Open items:** Phase 7 (attack simulations) next.
 
 ---
+
+## 2026-11-23 to 2026-11-24 - Phase 7: Attack simulations (S1-S5)
+
+**Goal:** run five authorized attack scenarios against the lab and record real detections, to find gaps before building custom rules.
+
+**Done:**
+- S1 - SSH brute force (Hydra, 32 attempts) against UBUNTU-SRV: detected and escalated out of the box (rules 5712/5763, level 10). No gap.
+- S2 - Nmap SYN/service/OS scan against UBUNTU-SRV: reached Wazuh via Suricata (rule 86601), but only at level 3, no correlation.
+- S3 - Simulated suspicious PowerShell on WIN-CLIENT (recon, base64-encoded command, failed download cradle): detected out of the box, rule 92057 at level 12. No gap.
+- S4 - AD enumeration and password spray (NetExec, 20 attempts) against DC01: NTLM/SMB path detected and escalated out of the box (rules 60122/60204), but the Kerberos path (4768/4771) was only caught generically (rule 60104, level 5), no dedicated rule or spray correlation.
+- S5 - Simulated Linux privilege escalation and persistence on UBUNTU-SRV (new user, sudo group, cron persistence, SUID backdoor, `history -c`): everything logged by auditd but flat at level 3 (rules 80792/80791), FIM blind to `/tmp` and `/etc/cron.d`, no rule for history tampering.
+
+Each scenario documented in its own file under `Attack-Simulations/` with scope, timing, detections, MITRE ATT&CK mapping and evidence screenshots.
+
+**Findings carried into Phase 8:** S2 scan severity/correlation, S4 Kerberos 4768/4771 coverage, S5 FIM scope + severity + SUID detection + history-tampering detection.
+
+**Screenshots:** `S1_ssh-bruteforce-rule5712-nonexistent-user.png`, `S1_ssh-bruteforce-rule5763-authentication-failed.png`, `S3_powershell-encoded-command-rule92057.png`, `S4_ad-spray-rule60122-list-20hits.png`, `S4_ad-spray-rule60204-escalation-detail.png`, `S5_linux-privesc-audit-events-level3.png`, `S5_linux-fim-gap-no-syscheck-results.png`, `TEL-03_suricata-alerts-in-wazuh.png`.
+
+**Open items:** Phase 8 (detection engineering) next.
+
+---
+
+## 2026-11-24 to 2026-11-26 - Phase 8: Detection engineering (rules 100002-100010)
+
+**Goal:** close the Phase 7 gaps with custom Wazuh local rules and expanded FIM scope.
+
+**Done:** nine custom rules added on SOC-Server (`/var/ossec/etc/rules/local_rules.xml`), full detail and raw alert evidence in [Documentation/phase8-detection-engineering.md](phase8-detection-engineering.md):
+- 100002 (level 12) - sudoers/cron FIM hit. Validated: 2x live alerts.
+- 100003 (level 10) - `/etc/passwd`/`/etc/shadow` FIM hit. Deployed, no recorded validation alert.
+- 100004 (level 7) - `/tmp` write FIM hit. Deployed, no recorded validation alert.
+- 100005 (level 8) - Kerberos 4771 pre-auth failure. Validated: 5x live alerts (kerbrute spray).
+- 100006 (level 8) - Kerberos 4768 TGT request. Deployed, not triggered by the kerbrute test; no recorded validation alert.
+- 100007 (level 12) - Kerberos spray frequency correlation. Validated: 1x live alert.
+- 100008 (level 10) - `usermod`/`gpasswd` privilege-group modification (auditd). Validated: 1x live alert.
+- 100009 (level 12) - SUID bit set via FIM (`chmod u+s`). Validated: fired on `u+s`, correctly silent on `u-s`. Limitation: only matches the `rws` pattern, misses SUID-without-exec (`rwS`).
+- 100010 (level 12) - `.bash_history` modified or deleted via FIM. Validated on both modify (550) and delete (553). Limitation: fires on any change, does not catch in-memory `history -c`.
+
+**Problems and fixes (lessons learned):**
+1. Rule 100009's first version used `<field name="syscheck.path">`/`<field name="syscheck.perm_after">`, by false analogy with working `win.*` fields. It never fired. Root cause, found by inspecting Wazuh's own shipped ruleset (`/var/ossec/ruleset/rules/0015-ossec_rules.xml`): syscheck events are injected into `analysisd` directly by the FIM module and decoded via `<category>`/`<decoded_as>`, not `<field>` on path/perm. `wazuh-logtest` could not help debug this either, since it never sees syscheck events (confirmed: "No decoder matched" on every attempted line). Fix: rewrote 100009 to hook off `<if_sid>550</if_sid>` with a plain `<match>to 'rws</match>` substring, the same mechanism already used by rules 100002-100004.
+2. A pre-existing `ossec.conf` on UBUNTU-SRV had a duplicate `<directories>` element inside `<rootcheck>` (left over from an earlier bulk edit), causing `syscheckd` config warnings. Fixed by removing the stray line; confirmed by a clean restart with zero `(1230)/(1202)/(1207)` warnings.
+3. Recurring "Too many fields for JSON decoder" `wazuh-analysisd` errors, confirmed to correlate precisely with every `wazuh-manager` restart (inventory-harvester/syscollector sync burst). Non-fatal, does not block rule loading. Treated as a known platform limitation; not yet written up as its own section.
+4. `$(agent.name)` and `$(syscheck.path)` fail to interpolate in rule descriptions on rules 100008-100010 (render blank); cosmetic only, the raw alert JSON carries the correct data.
+
+**Open items:** rules 100003, 100004 and 100006 have no recorded validation alert in the repo. Whether to keep or remove the earlier, less reliable `audit-wazuh-suid` auditd-based SUID rules (now superseded by 100009) was never decided.
+
+---
+
+## 2026-11-24 to 2026-11-26 - Phase 9: Incident response reports (S6, S7)
+
+**Goal:** write two incident response reports, NIST SP 800-61 format, treating S4 and S5 as real incidents.
+
+**Done:**
+- S6 - AD reconnaissance and password spray against DC01 (treats S4 as the incident): preparation/detection-analysis/containment/eradication-recovery/lessons-learned, built from the real S4 alert data (rules 60122/60204).
+- S7 - Linux privilege escalation and persistence on UBUNTU-SRV (treats S5 as the incident): same NIST structure, includes an explicit per-step table mapping each S5 action to its detection gap at the time and the Phase 8 rule that now covers it, and an honest note that the Phase 8 rules were validated separately, not in one live re-run of the S5 chain.
+
+**Problems and fixes (lessons learned):**
+1. S6's rule 60122 count was initially stated as 20 (the total spray attempts); corrected to 18 (the actual alert count: 18x rule 60122 + 2x rule 60204 = 20 attempts), backed by dedicated count screenshots.
+2. The S4/S6 narrative initially implied rule 100006 (Kerberos 4768) was validated alongside 100005/100007; corrected across S4, S6 and the technical report to state it was deployed but not triggered by the kerbrute test.
+3. An early S7 draft assumed an attack order and that S5 modified `/etc/sudoers` directly; corrected to the real order and to `usermod -aG sudo` (group membership, not a direct sudoers edit), and corrected to state plainly that rule 100010 does not cover S5's actual anti-forensics step (`history -c`, in-memory, no file trace).
+
+**Screenshots:** `S6-01_incident-timeline.png`, `S6-01b_rule60122-count-18.png`, `S6-01c_rule60204-count-2.png`, plus the S4/S5 evidence screenshots reused by reference.
+
+**Open items:** Phase 10 (final documentation and publishing) next.
+
+---
+
+## 2026-11-26 - Phase 10: Final documentation and publishing
+
+**Goal:** repo cleanup, README overhaul, technical report final pass, GitHub Pages publication.
+
+**Done:**
+- Repo cleanup: restored `S5_linux-fim-gap-no-syscheck-results.png` (deleted on disk but still referenced); promoted 6 of 19 untracked screenshots out of two `extra/` folders with renames and new doc references (`P8-03a/b/c` usermod pre-fix evidence, `S6-01b/c` count-correction evidence, `P8-01a` auditd pre-tuning evidence); 13 remaining untracked files left as-is.
+- `technical-report.tex` rewrite: added full S6 coverage (previously missing entirely), extended Phase 7 from S4-only to all of S1-S5, added Phase 8 (detection engineering) and Phase 9 (incident response) sections, corrected the overstated claim that rule 100006 was validated, rebuilt the PDF (14 pages, no errors). Follow-up commit fixed two remaining stale claims: a UFW line (UFW was never installed) and a "planned scenarios" table still listing unused tools (Impacket, BloodHound).
+- `README.md` full rewrite: 12-section structure (summary/status, objectives, architecture, project status, S1-S7 tables, detection engineering, technical report, screenshots, open items, repository structure, conventions/scope, tools). Removed several fabricated/stale claims (UFW, Impacket, BloodHound, Metasploit, Wireshark, fabricated planned files); added kerbrute and PowerShell to the tools list; kept the VM inventory table's vCPU/RAM/disk columns (virtual allocations, not physical host specs, so outside the no-hardware-specs rule).
+- GitHub Pages enabled on the `main` branch root (Jekyll auto-renders `README.md`). The repo is public, so the published site is public; confirmed live and rendering correctly at `https://abdelthe1.github.io/SOC-Home-Lab/`.
+
+**Problems and fixes (lessons learned):**
+1. The technical report was far more stale than expected: asked only to add S7 coverage, discovered it had no S6 coverage at all and Phase 7 only covered S4. Required a full Phase 7-9 rewrite from real repo records rather than an incremental edit.
+2. `Documentation/progress-log.md` itself was found to be stale at this point (last entry: Phase 6) - this is the gap these four entries close.
+
+**Open items (documented honestly, not resolved):**
+- Suricata STREAM alert tuning and S2's scan severity/correlation rules (S2 gap, not picked up in Phase 8, which focused on S4/S5).
+- `history -c` / `HISTFILE` in-memory tampering remains undetected (no filesystem or syscall trace available to FIM or the current auditd rules).
+- Rules 100003, 100004, 100006: deployed, no recorded validation alert.
+- "Too many fields for JSON decoder" platform-limitation finding (Phase 8) not yet written up as its own section.
+- Disposition of the older `audit-wazuh-suid` auditd rules (superseded by FIM rule 100009) not decided.
+- 13 screenshots left untracked in `Screenshots/attack-evidence/extra/` and `Screenshots/wazuh-dashboard/extra/`.
