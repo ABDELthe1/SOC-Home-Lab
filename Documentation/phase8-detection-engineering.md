@@ -1,11 +1,14 @@
 # Phase 8 - Detection engineering
 
-Custom Wazuh rules and FIM changes that close two detection gaps found during the attack simulations. Both fixes were validated live in the lab.
+Custom Wazuh rules and FIM changes that close detection gaps found during the attack simulations. All fixes were validated live in the lab; known limitations are listed per section.
 
 | # | Gap | Source scenario | Fix | Validation |
 |---|---|---|---|---|
 | 1 | Linux FIM scope and severity | [S5](../Attack-Simulations/S5_linux-privesc-persistence.md) | Expanded `<syscheck>`, rules 100002-100004 | 2 x level 12 rule 100002 |
 | 2 | Kerberos 4768 / 4771 not identified or correlated | [S4](../Attack-Simulations/S4_ad-enumeration-spray.md) / [S6](../Attack-Simulations/S6_incident-response-report.md) | Rules 100005-100007 | 5 x level 8 rule 100005, 1 x level 12 rule 100007 |
+| 3 | SUID bit set (`chmod u+s`) not detected | [S5](../Attack-Simulations/S5_linux-privesc-persistence.md) | FIM on binary directories, rule 100009 | Level 12 rule 100009 on `chmod u+s`; no 100009 on `chmod u-s` |
+| 4 | Command history tampering not detected | [S5](../Attack-Simulations/S5_linux-privesc-persistence.md) | FIM on `.bash_history`, rule 100010 | Rule 100010 on modification (550) and deletion (553) |
+| 5 | Privilege group modification (`usermod` / `gpasswd`) not detected | [S5](../Attack-Simulations/S5_linux-privesc-persistence.md) | Rule 100008 on execve audit events | Level 10 rule 100008 on a live `usermod` |
 
 ## 1. Linux FIM and severity gap (S5)
 
@@ -151,3 +154,132 @@ Rules from SOC-Server `/var/ossec/etc/rules/local_rules.xml`:
 In total: 5 x level 8 rule 100005 and 1 x level 12 rule 100007, the same pattern the NTLM spray detection (rules 60122 / 60204) showed in S4.
 
 Evidence: [Screenshots/attack-evidence/P8-02_kerberos-spray-detection-validated.png](../Screenshots/attack-evidence/P8-02_kerberos-spray-detection-validated.png)
+
+## 3. SUID/SGID privilege escalation detection (chmod) (S5)
+
+### Gap
+
+In S5, the SUID backdoor (`chmod +s` on a copy of `/bin/bash`) produced only a generic level 3 audit event, with no rule identifying the SUID change.
+
+### Fix
+
+FIM scope on UBUNTU-SRV extended to the binary directories (added to the `<syscheck>` block):
+
+```xml
+<directories realtime="yes" check_all="yes" report_changes="yes">/usr/local/bin,/usr/bin,/usr/sbin</directories>
+```
+
+Rule 100009 hooks off base rule 550 (Integrity checksum changed) and matches the literal `to 'rws` in `full_log`, i.e. an owner-execute-and-setuid permission string appearing as the new state after a syscheck-detected permission change.
+
+Rule from SOC-Server `/var/ossec/etc/rules/local_rules.xml`:
+
+```xml
+<group name="local,syscheck,linux_persistence,">
+  <rule id="100009" level="12">
+    <if_sid>550</if_sid>
+    <match>to 'rws</match>
+    <description>SUID bit set on monitored binary on $(agent.name): $(syscheck.path)</description>
+    <mitre>
+      <id>T1548.001</id>
+    </mitre>
+    <group>privilege_escalation,persistence,</group>
+  </rule>
+</group>
+```
+
+### Validation
+
+Live test on UBUNTU-SRV:
+- `chmod u+s` on a test binary under the newly expanded FIM scope (`/usr/local/bin`) fired rule 100009 at level 12 (`perm_before`: `rwxr-xr-x`, `perm_after`: `rwsr-xr-x`).
+- Discrimination test: removing the SUID bit (`chmod u-s`) on the same file did **not** fire rule 100009 (only the generic rule 550 fired), confirming the rule distinguishes gaining SUID from losing it.
+
+### Known limitations
+
+1. Only the `rws` pattern (SUID + executable) is matched. A SUID bit set on a non-executable file renders as `rwS` and is not caught by this rule.
+2. The `$(agent.name)` and `$(syscheck.path)` variables in the rule description do not interpolate (they render blank), the same category of cosmetic issue as rule 100008's `$(agent.name)`. The alert's raw `full_log` and syscheck JSON fields still contain the real path and permission data.
+3. An auditd syscall watch (`-S chmod,fchmod,fchmodat`) was tried first. It was kernel-correct (verified with `ausearch`), but its events never reached Wazuh's alert layer (`alerts.json`), for reasons not fully root-caused (a link to the recurring "Too many fields for JSON decoder" errors is suspected, not confirmed). The FIM-based approach was adopted instead because it is empirically reliable.
+
+## 4. Command history tampering detection (S5)
+
+### Gap
+
+In S5, `history -c` was run as an anti-forensics step and no rule was observed for shell history clearing.
+
+### Fix
+
+FIM scope on UBUNTU-SRV extended to the monitored user's `.bash_history` file (added to the `<syscheck>` block):
+
+```xml
+<directories realtime="yes" check_all="yes" report_changes="yes">/home/socadmin/.bash_history</directories>
+```
+
+Rule 100010 hooks off base rules 550 (modified) and 553 (deleted) and matches `.bash_history` in `full_log`.
+
+Rule from SOC-Server `/var/ossec/etc/rules/local_rules.xml`:
+
+```xml
+<group name="local,syscheck,linux_persistence,">
+  <rule id="100010" level="12">
+    <if_sid>550,553</if_sid>
+    <match>.bash_history</match>
+    <description>Possible command history tampering: .bash_history modified or deleted on $(agent.name)</description>
+    <mitre>
+      <id>T1070.003</id>
+    </mitre>
+    <group>defense_evasion,persistence,</group>
+  </rule>
+</group>
+```
+
+### Validation
+
+Live tests on UBUNTU-SRV:
+- Appending a line to `.bash_history` fired rule 100010 via the modified / 550 path (size 0 → 19, diff showing the added line).
+- Deleting the file with `rm` fired rule 100010 via the deleted / 553 path (`full_log`: "File ... deleted", decoder `syscheck_deleted`).
+
+### Known limitations
+
+1. The rule fires on **any** `.bash_history` change, not specifically malicious clearing. Normal history growth from everyday shell use also triggers it; an analyst must check `size_before` / `size_after` / the diff in the raw alert to tell a truncation to zero (likely malicious) from normal growth.
+2. `history -c` (the bash builtin that clears in-memory history without touching the file) and `unset HISTFILE` / `export HISTFILE=/dev/null` are **not** detected. Neither leaves a filesystem or syscall trace visible to the current tooling (FIM or the existing execve auditd rule). This is a documented gap: catching them would need shell-session-level auditing (for example TTY / keystroke logging), which is out of scope for the lab's current instrumentation.
+
+## 5. Privilege group modification detection (usermod / gpasswd) (S5)
+
+### Gap
+
+No detection existed for privilege group modification commands (`usermod` / `gpasswd`) that add a user to sudo / wheel / admin. In S5, `usermod -aG sudo backdoor` produced only the generic level 3 rule 80792.
+
+### Fix
+
+Rule 100008 hooks off the generic execve audit rule 80792 and matches `audit.command` against `^usermod$|^gpasswd$`.
+
+Rule from SOC-Server `/var/ossec/etc/rules/local_rules.xml`:
+
+```xml
+<group name="local,audit,linux_persistence,">
+  <rule id="100008" level="10">
+    <if_sid>80792</if_sid>
+    <field name="audit.command">^usermod$|^gpasswd$</field>
+    <description>Privilege group modification command executed ($(audit.command)) by uid $(audit.uid) on $(agent.name) - review target group (sudo/wheel/admin)</description>
+    <mitre>
+      <id>T1098.007</id>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,persistence,</group>
+  </rule>
+</group>
+```
+
+### Validation
+
+Live test on UBUNTU-SRV: a group modification command run as socadmin via sudo (`sudo usermod -aG sudo testuser` or equivalent). Rule 100008 fired at level 10, correctly identifying the command (`usermod`) and the acting uid (0, root via sudo). Captured alert from `alerts.json` (timestamp `2026-11-26T17:36:42.136+0000`, excerpt):
+
+```
+"rule":{"level":10,"description":"Privilege group modification command executed (usermod) by uid 0 on  - review target group (sudo/wheel/admin)","id":"100008",...}
+"full_log":"...comm=\"usermod\" exe=\"/usr/sbin/usermod\"...AUID=\"socadmin\" UID=\"root\"..."
+```
+
+### Known limitations
+
+1. The rule escalates on **any** `usermod` / `gpasswd` invocation, not specifically ones that target a privileged group. The command-line arguments are not available in a clean structured Wazuh field for this decoder (only hex-encoded in `PROCTITLE` within `full_log`), so precise group-name matching was not attempted. The "review target group" wording in the description reflects that an analyst must check the raw log to see which group was targeted.
+2. `$(agent.name)` in the description renders blank (visible as "on  -" in the alert above), the same cosmetic variable-interpolation issue seen in rules 100009 and 100010.
+3. The audit records for a single `usermod` invocation can include several sub-exec entries, for example `exit="-2"` (ENOENT) records for the `nscd` / `sss_cache` cache-invalidation helpers that `usermod` tries internally. These are not failures of the detection or of the privilege action itself, only `usermod`'s internal NSS cache-flush attempts failing because those helper binaries are not installed on this minimal system.

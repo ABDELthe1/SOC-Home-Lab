@@ -505,6 +505,31 @@ a live kerbrute password spray produced 5 x level~8 rule 100005 and
 Password Spraying, T1021.002 SMB/Windows Admin Shares (attempted access
 vector).
 
+\paragraph{Phase 8 fixes from the Scenario 5 plan.}
+\begin{itemize}
+  \item \textbf{SUID detection (\texttt{chmod}): fix implemented and
+        validated.} FIM extended to \texttt{/usr/local/bin},
+        \texttt{/usr/bin} and \texttt{/usr/sbin}; rule 100009 (level~12)
+        fired on \texttt{chmod u+s} (\texttt{rwxr-xr-x} $\rightarrow$
+        \texttt{rwsr-xr-x}) and did not fire on \texttt{chmod u-s}.
+        Caveat: only the \texttt{rws} pattern is matched, so SUID on a
+        non-executable file (\texttt{rwS}) is not caught.
+  \item \textbf{History tampering detection: fix implemented and
+        validated.} FIM extended to \texttt{.bash\_history}; rule 100010
+        (level~12) fired on modification (rule 550) and deletion (rule 553).
+        Caveat: it fires on any \texttt{.bash\_history} change, not only
+        malicious clearing, and the in-memory \texttt{history -c} and
+        \texttt{HISTFILE} tampering remain undetected.
+  \item \textbf{Privilege group modification (\texttt{usermod} /
+        \texttt{gpasswd}): fix implemented and validated.} Rule 100008
+        (level~10) on execve audit events fired on a live \texttt{sudo
+        usermod} group modification, identifying the command and acting uid.
+        Caveat: it escalates on any \texttt{usermod} / \texttt{gpasswd} run,
+        not only ones targeting a privileged group; the target group must be
+        checked in the raw log.
+\end{itemize}
+Details: \texttt{phase8-detection-engineering.md}.
+
 %--------------------------------------------------------------------
 \section{Open items (Phase 7 and later)}
 
@@ -512,13 +537,6 @@ vector).
   \item Phase~7: remaining attack scenarios.
   \item Phase~8: custom detection rules and tuning of the SURICATA STREAM
         alerts.
-  \item Phase~8: severity escalation when \texttt{usermod} /
-        \texttt{gpasswd} add a user to the sudo or wheel group (Scenario 5
-        plan, not implemented).
-  \item Phase~8: detection of \texttt{chmod} setting the SUID bit
-        (Scenario 5 plan, not implemented).
-  \item Phase~8: detection of shell history tampering (\texttt{history -c} /
-        \texttt{HISTFILE}) (Scenario 5 plan, not implemented).
 \end{itemize}
 
 %--------------------------------------------------------------------
