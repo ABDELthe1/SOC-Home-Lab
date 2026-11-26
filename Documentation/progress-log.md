@@ -160,7 +160,7 @@ Started building a SOC home lab: Wazuh SIEM + Suricata IDS monitoring an Active 
 
 ---
 
-## 2026-11-23 to 2026-11-24 - Phase 7: Attack simulations (S1-S5)
+## 2026-11-20 to 2026-11-24 - Phase 7: Attack simulations (S1-S5)
 
 **Goal:** run five authorized attack scenarios against the lab and record real detections, to find gaps before building custom rules.
 
@@ -217,7 +217,7 @@ Each scenario documented in its own file under `Attack-Simulations/` with scope,
 **Problems and fixes (lessons learned):**
 1. S6's rule 60122 count was initially stated as 20 (the total spray attempts); corrected to 18 (the actual alert count: 18x rule 60122 + 2x rule 60204 = 20 attempts), backed by dedicated count screenshots.
 2. The S4/S6 narrative initially implied rule 100006 (Kerberos 4768) was validated alongside 100005/100007; corrected across S4, S6 and the technical report to state it was deployed but not triggered by the kerbrute test.
-3. An early S7 draft assumed an attack order and that S5 modified `/etc/sudoers` directly; corrected to the real order and to `usermod -aG sudo` (group membership, not a direct sudoers edit), and corrected to state plainly that rule 100010 does not cover S5's actual anti-forensics step (`history -c`, in-memory, no file trace).
+3. The initial brief for the S7 report assumed an attack order and that S5 modified `/etc/sudoers` directly; corrected before S7 was written, to the real order and to `usermod -aG sudo` (group membership, not a direct sudoers edit), and to state plainly that rule 100010 does not cover S5's actual anti-forensics step (`history -c`, in-memory, no file trace).
 
 **Screenshots:** `S6-01_incident-timeline.png`, `S6-01b_rule60122-count-18.png`, `S6-01c_rule60204-count-2.png`, plus the S4/S5 evidence screenshots reused by reference.
 
