@@ -85,6 +85,8 @@ Touching `/etc/cron.d/test-persistence` on UBUNTU-SRV produced two level 12 rule
 
 Evidence: [Screenshots/attack-evidence/P8-01_linux-severity-fix-validated.png](../Screenshots/attack-evidence/P8-01_linux-severity-fix-validated.png)
 
+Before evidence: [Screenshots/wazuh-dashboard/P8-01a_ubuntu-auditd-flat-level3-before-tuning.png](../Screenshots/wazuh-dashboard/P8-01a_ubuntu-auditd-flat-level3-before-tuning.png) - Phase 5 (2026-11-20), before the root-execve auditd rule was restricted to `auid>=1000`: 1,596 audit events in 15 minutes, all rule 80792 at level 3, showing the flat level 3 baseline.
+
 ## 2. Kerberos 4768 / 4771 gap (S4 / S6)
 
 ### Gap
@@ -277,6 +279,11 @@ Live test on UBUNTU-SRV: a group modification command run as socadmin via sudo (
 "rule":{"level":10,"description":"Privilege group modification command executed (usermod) by uid 0 on  - review target group (sudo/wheel/admin)","id":"100008",...}
 "full_log":"...comm=\"usermod\" exe=\"/usr/sbin/usermod\"...AUID=\"socadmin\" UID=\"root\"..."
 ```
+
+Pre-fix evidence (S5, 2026-11-23, generic detection only):
+- [Screenshots/attack-evidence/P8-03a_usermod-before-fix-events-list.png](../Screenshots/attack-evidence/P8-03a_usermod-before-fix-events-list.png) - 7 `usermod` events, all generic rule 80792 at level 3.
+- [Screenshots/attack-evidence/P8-03b_usermod-before-fix-audit-detail.png](../Screenshots/attack-evidence/P8-03b_usermod-before-fix-audit-detail.png) - document details of one of them (rule 80792, level 3): an `exit -2` / `success no` sub-exec record (see limitation 3).
+- [Screenshots/attack-evidence/P8-03c_usermod-before-fix-audit-fulllog.png](../Screenshots/attack-evidence/P8-03c_usermod-before-fix-audit-fulllog.png) - the same record's `full_log`, showing the `nscd` helper path and only the command name in `rule.description`.
 
 ### Known limitations
 
